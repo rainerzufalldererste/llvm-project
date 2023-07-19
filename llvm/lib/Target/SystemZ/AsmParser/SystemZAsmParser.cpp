@@ -460,7 +460,7 @@ private:
   // For this purpose, we explicitly query the SystemZMCAsmInfo instance
   // here, to get the "correct" assembler dialect, and use it in various
   // functions.
-  unsigned getMAIAssemblerDialect() {
+  AsmDialect::Type getMAIAssemblerDialect() {
     return Parser.getContext().getAsmInfo()->getAssemblerDialect();
   }
 
@@ -477,7 +477,9 @@ private:
   inline bool isParsingHLASM() { return getMAIAssemblerDialect() == AD_HLASM; }
 
   // Are we parsing using the AD_ATT dialect?
-  inline bool isParsingATT() { return getMAIAssemblerDialect() == AD_ATT; }
+  inline bool isParsingATT() {
+    return getMAIAssemblerDialect() == AsmDialect::SystemZ_ATT;
+  }
 
 public:
   SystemZAsmParser(const MCSubtargetInfo &sti, MCAsmParser &parser,

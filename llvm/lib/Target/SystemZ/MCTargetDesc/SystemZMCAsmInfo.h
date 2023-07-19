@@ -15,7 +15,10 @@
 
 namespace llvm {
 class Triple;
-enum SystemZAsmDialect { AD_ATT = 0, AD_HLASM = 1 };
+enum SystemZAsmDialect { // this can technically be removed now.
+  AD_ATT = AsmDialect::SystemZ_ATT,
+  AD_HLASM = AsmDialect::SystemZ_HLASM,
+};
 
 class SystemZMCAsmInfoELF : public MCAsmInfoELF {
 public:

@@ -415,8 +415,8 @@ int main(int argc, char **argv) {
   // Without an MCTargetStreamer, certain assembly directives can trigger a
   // segfault. (For example, the .cv_fpo_proc directive on x86 will segfault if
   // we don't initialize the MCTargetStreamer.)
-  unsigned IPtempOutputAsmVariant =
-      OutputAsmVariant == -1 ? 0 : OutputAsmVariant;
+  const AsmDialect::Type IPtempOutputAsmVariant =
+      (AsmDialect::Type)(OutputAsmVariant == -1 ? 0 : OutputAsmVariant);
   std::unique_ptr<MCInstPrinter> IPtemp(TheTarget->createMCInstPrinter(
       Triple(TripleName), IPtempOutputAsmVariant, *MAI, *MCII, *MRI));
   if (!IPtemp) {
@@ -501,7 +501,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  unsigned AssemblerDialect = CRG.getAssemblerDialect();
+  AsmDialect::Type AssemblerDialect = CRG.getAssemblerDialect();
   if (OutputAsmVariant >= 0)
     AssemblerDialect = static_cast<unsigned>(OutputAsmVariant);
   std::unique_ptr<MCInstPrinter> IP(TheTarget->createMCInstPrinter(
