@@ -292,7 +292,7 @@ void X86AsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
 void X86AsmPrinter::PrintOperand(const MachineInstr *MI, unsigned OpNo,
                                  raw_ostream &O) {
   const MachineOperand &MO = MI->getOperand(OpNo);
-  const bool IsATT = MI->getInlineAsmDialect() == InlineAsm::AD_ATT;
+  const bool IsATT = MI->getInlineAsmDialect() == AsmDialect::X86_ATT;
   switch (MO.getType()) {
   default: llvm_unreachable("unknown operand type!");
   case MachineOperand::MO_Register: {
@@ -311,10 +311,10 @@ void X86AsmPrinter::PrintOperand(const MachineInstr *MI, unsigned OpNo,
   case MachineOperand::MO_ConstantPoolIndex:
   case MachineOperand::MO_GlobalAddress: {
     switch (MI->getInlineAsmDialect()) {
-    case InlineAsm::AD_ATT:
+    case AsmDialect::X86_ATT:
       O << '$';
       break;
-    case InlineAsm::AD_Intel:
+    case AsmDialect::X86_Intel:
       O << "offset ";
       break;
     }
@@ -337,7 +337,7 @@ void X86AsmPrinter::PrintModifiedOperand(const MachineInstr *MI, unsigned OpNo,
   const MachineOperand &MO = MI->getOperand(OpNo);
   if (!Modifier || !MO.isReg())
     return PrintOperand(MI, OpNo, O);
-  if (MI->getInlineAsmDialect() == InlineAsm::AD_ATT)
+  if (MI->getInlineAsmDialect() == AsmDialect::X86_ATT)
     O << '%';
   Register Reg = MO.getReg();
   if (strncmp(Modifier, "subreg", strlen("subreg")) == 0) {
@@ -533,7 +533,8 @@ void X86AsmPrinter::PrintIntelMemReference(const MachineInstr *MI,
 static bool printAsmMRegister(const X86AsmPrinter &P, const MachineOperand &MO,
                               char Mode, raw_ostream &O) {
   Register Reg = MO.getReg();
-  bool EmitPercent = MO.getParent()->getInlineAsmDialect() == InlineAsm::AD_ATT;
+  bool EmitPercent =
+      MO.getParent()->getInlineAsmDialect() == AsmDialect::X86_ATT;
 
   if (!X86::GR8RegClass.contains(Reg) &&
       !X86::GR16RegClass.contains(Reg) &&
@@ -577,7 +578,8 @@ static bool printAsmMRegister(const X86AsmPrinter &P, const MachineOperand &MO,
 static bool printAsmVRegister(const MachineOperand &MO, char Mode,
                               raw_ostream &O) {
   Register Reg = MO.getReg();
-  bool EmitPercent = MO.getParent()->getInlineAsmDialect() == InlineAsm::AD_ATT;
+  bool EmitPercent =
+      MO.getParent()->getInlineAsmDialect() == AsmDialect::X86_ATT;
 
   unsigned Index;
   if (X86::VR128XRegClass.contains(Reg))

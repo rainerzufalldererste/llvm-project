@@ -19,7 +19,7 @@
 using namespace llvm;
 
 static cl::opt<AsmDialect::Type> AsmWriterVariant(
-    "aarch64-neon-syntax", cl::init(-1),
+    "aarch64-neon-syntax", cl::init((AsmDialect::Type)-1),
     cl::desc("Choose style of NEON code to emit from AArch64 backend:"),
     cl::values(clEnumValN(AsmDialect::AArch64_Generic, "generic",
                           "Emit generic NEON assembly"),

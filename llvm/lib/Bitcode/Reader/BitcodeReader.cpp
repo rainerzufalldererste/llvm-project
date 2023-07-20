@@ -3415,7 +3415,7 @@ Error BitcodeReader::parseConstants() {
         return error("Missing element type for old-style inlineasm");
       V = InlineAsm::get(cast<FunctionType>(CurElemTy), AsmStr, ConstrStr,
                          HasSideEffects, IsAlignStack,
-                         InlineAsm::AsmDialect(AsmDialect));
+                         AsmDialect::Type(AsmDialect));
       break;
     }
     // This version adds support for the unwind keyword.
@@ -3447,7 +3447,7 @@ Error BitcodeReader::parseConstants() {
         return error("Missing element type for old-style inlineasm");
       V = InlineAsm::get(cast<FunctionType>(CurElemTy), AsmStr, ConstrStr,
                          HasSideEffects, IsAlignStack,
-                         InlineAsm::AsmDialect(AsmDialect), CanThrow);
+                         AsmDialect::Type(AsmDialect), CanThrow);
       break;
     }
     // This version adds explicit function type.
@@ -3480,7 +3480,7 @@ Error BitcodeReader::parseConstants() {
         ConstrStr += (char)Record[OpNum + AsmStrSize + i];
       UpgradeInlineAsmString(&AsmStr);
       V = InlineAsm::get(FnTy, AsmStr, ConstrStr, HasSideEffects, IsAlignStack,
-                         InlineAsm::AsmDialect(AsmDialect), CanThrow);
+                         AsmDialect::Type(AsmDialect), CanThrow);
       break;
     }
     case bitc::CST_CODE_BLOCKADDRESS:{

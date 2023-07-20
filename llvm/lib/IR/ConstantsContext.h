@@ -27,6 +27,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/OperandTraits.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -351,12 +352,12 @@ struct InlineAsmKeyType {
   FunctionType *FTy;
   bool HasSideEffects;
   bool IsAlignStack;
-  InlineAsm::AsmDialect AsmDialect;
+  AsmDialect::Type AsmDialect;
   bool CanThrow;
 
   InlineAsmKeyType(StringRef AsmString, StringRef Constraints,
                    FunctionType *FTy, bool HasSideEffects, bool IsAlignStack,
-                   InlineAsm::AsmDialect AsmDialect, bool canThrow)
+                   AsmDialect::Type AsmDialect, bool canThrow)
       : AsmString(AsmString), Constraints(Constraints), FTy(FTy),
         HasSideEffects(HasSideEffects), IsAlignStack(IsAlignStack),
         AsmDialect(AsmDialect), CanThrow(canThrow) {}

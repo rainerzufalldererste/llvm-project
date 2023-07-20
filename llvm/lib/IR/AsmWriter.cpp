@@ -2431,8 +2431,8 @@ static void WriteAsOperandInternal(raw_ostream &Out, const Value *V,
       Out << "sideeffect ";
     if (IA->isAlignStack())
       Out << "alignstack ";
-    // We don't emit the AD_ATT dialect as it's the assumed default.
-    if (IA->getDialect() == InlineAsm::AD_Intel)
+    // We don't emit the X86_Intel dialect as it's the assumed default.
+    if (IA->getDialect() == AsmDialect::X86_Intel)
       Out << "inteldialect ";
     if (IA->canThrow())
       Out << "unwind ";

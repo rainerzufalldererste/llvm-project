@@ -1371,11 +1371,11 @@ public:
   /// FIXME: Seems like a layering violation that the AsmDialect, which is X86
   /// specific, be attached to a generic MachineInstr.
   bool isMSInlineAsm() const {
-    return isInlineAsm() && getInlineAsmDialect() == InlineAsm::AD_Intel;
+    return isInlineAsm() && getInlineAsmDialect() == AsmDialect::X86_Intel;
   }
 
   bool isStackAligningInlineAsm() const;
-  InlineAsm::AsmDialect getInlineAsmDialect() const;
+  AsmDialect::Type getInlineAsmDialect() const;
 
   bool isInsertSubreg() const {
     return getOpcode() == TargetOpcode::INSERT_SUBREG;

@@ -19,6 +19,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include <cassert>
 #include <string>
 #include <vector>
@@ -31,12 +32,6 @@ class PointerType;
 template <class ConstantClass> class ConstantUniqueMap;
 
 class InlineAsm final : public Value {
-public:
-  enum AsmDialect {
-    AD_ATT,
-    AD_Intel
-  };
-
 private:
   friend struct InlineAsmKeyType;
   friend class ConstantUniqueMap<InlineAsm>;
@@ -45,12 +40,12 @@ private:
   FunctionType *FTy;
   bool HasSideEffects;
   bool IsAlignStack;
-  AsmDialect Dialect;
+  AsmDialect::Type Dialect;
   bool CanThrow;
 
   InlineAsm(FunctionType *Ty, const std::string &AsmString,
             const std::string &Constraints, bool hasSideEffects,
-            bool isAlignStack, AsmDialect asmDialect, bool canThrow);
+            bool isAlignStack, AsmDialect::Type asmDialect, bool canThrow);
 
   /// When the ConstantUniqueMap merges two types and makes two InlineAsms
   /// identical, it destroys one of them with this method.
@@ -65,11 +60,12 @@ public:
   static InlineAsm *get(FunctionType *Ty, StringRef AsmString,
                         StringRef Constraints, bool hasSideEffects,
                         bool isAlignStack = false,
-                        AsmDialect asmDialect = AD_ATT, bool canThrow = false);
+                        AsmDialect::Type asmDialect = AsmDialect::X86_ATT,
+                        bool canThrow = false);
 
   bool hasSideEffects() const { return HasSideEffects; }
   bool isAlignStack() const { return IsAlignStack; }
-  AsmDialect getDialect() const { return Dialect; }
+  AsmDialect::Type getDialect() const { return Dialect; }
   bool canThrow() const { return CanThrow; }
 
   /// getType - InlineAsm's are always pointers.
@@ -400,12 +396,12 @@ public:
     if (ExtraInfo & InlineAsm::Extra_IsAlignStack)
       Result.push_back("alignstack");
 
-    AsmDialect Dialect =
-        InlineAsm::AsmDialect((ExtraInfo & InlineAsm::Extra_AsmDialect));
+    AsmDialect::Type Dialect =
+        (AsmDialect::Type)!!(ExtraInfo & InlineAsm::Extra_AsmDialect);
 
-    if (Dialect == InlineAsm::AD_ATT)
+    if (Dialect == AsmDialect::X86_ATT)
       Result.push_back("attdialect");
-    if (Dialect == InlineAsm::AD_Intel)
+    if (Dialect == AsmDialect::X86_Intel)
       Result.push_back("inteldialect");
 
     return Result;

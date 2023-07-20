@@ -5731,7 +5731,7 @@ bool LLParser::convertValIDToValue(Type *Ty, ValID &ID, Value *&V,
       return error(ID.Loc, toString(std::move(Err)));
     V = InlineAsm::get(
         ID.FTy, ID.StrVal, ID.StrVal2, ID.UIntVal & 1, (ID.UIntVal >> 1) & 1,
-        InlineAsm::AsmDialect((ID.UIntVal >> 2) & 1), (ID.UIntVal >> 3) & 1);
+        AsmDialect::Type((ID.UIntVal >> 2) & 1), (ID.UIntVal >> 3) & 1);
     return false;
   }
   case ValID::t_GlobalName:

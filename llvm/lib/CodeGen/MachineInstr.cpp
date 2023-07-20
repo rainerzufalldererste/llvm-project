@@ -1713,9 +1713,9 @@ void MachineInstr::print(raw_ostream &OS, ModuleSlotTracker &MST,
       OS << " [isconvergent]";
     if (ExtraInfo & InlineAsm::Extra_IsAlignStack)
       OS << " [alignstack]";
-    if (getInlineAsmDialect() == InlineAsm::AD_ATT)
+    if (getInlineAsmDialect() == AsmDialect::X86_ATT)
       OS << " [attdialect]";
-    if (getInlineAsmDialect() == InlineAsm::AD_Intel)
+    if (getInlineAsmDialect() == AsmDialect::X86_Intel)
       OS << " [inteldialect]";
 
     StartOp = AsmDescOp = InlineAsm::MIOp_FirstOperand;

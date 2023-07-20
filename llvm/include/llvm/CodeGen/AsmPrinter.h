@@ -845,7 +845,7 @@ private:
   emitInlineAsm(StringRef Str, const MCSubtargetInfo &STI,
                 const MCTargetOptions &MCOptions,
                 const MDNode *LocMDNode = nullptr,
-                InlineAsm::AsmDialect AsmDialect = InlineAsm::AD_ATT) const;
+                AsmDialect::Type AsmDialect = AsmDialect::X86_ATT) const;
 
   /// This method formats and emits the specified machine instruction that is an
   /// inline asm.

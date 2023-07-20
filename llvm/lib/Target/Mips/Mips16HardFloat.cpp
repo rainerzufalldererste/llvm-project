@@ -51,7 +51,7 @@ static void emitInlineAsm(LLVMContext &C, BasicBlock *BB, StringRef AsmText) {
   FunctionType *AsmFTy =
       FunctionType::get(Type::getVoidTy(C), AsmArgTypes, false);
   InlineAsm *IA = InlineAsm::get(AsmFTy, AsmText, "", true,
-                                 /* IsAlignStack */ false, InlineAsm::AD_ATT);
+                                 /* IsAlignStack */false, AsmDialect::X86_ATT);
   CallInst::Create(IA, AsmArgs, "", BB);
 }
 

@@ -465,19 +465,22 @@ LLVMValueRef LLVMGetInlineAsm(LLVMTypeRef Ty, char *AsmString,
                               size_t ConstraintsSize, LLVMBool HasSideEffects,
                               LLVMBool IsAlignStack,
                               LLVMInlineAsmDialect Dialect, LLVMBool CanThrow) {
-  InlineAsm::AsmDialect AD;
+  AsmDialect::Type D;
   switch (Dialect) {
   case LLVMInlineAsmDialectATT:
-    AD = InlineAsm::AD_ATT;
+    D = AsmDialect::X86_ATT;
     break;
   case LLVMInlineAsmDialectIntel:
-    AD = InlineAsm::AD_Intel;
+    D = AsmDialect::X86_Intel;
+    break;
+  default:
+    assert(false && "Unsupported or invalid Asm Dialect");
     break;
   }
   return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
                              StringRef(AsmString, AsmStringSize),
                              StringRef(Constraints, ConstraintsSize),
-                             HasSideEffects, IsAlignStack, AD, CanThrow));
+                             HasSideEffects, IsAlignStack, D, CanThrow));
 }
 
 /*--.. Operations on module contexts ......................................--*/
