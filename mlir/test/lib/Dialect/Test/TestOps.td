@@ -761,6 +761,12 @@ def OpWithInferTypeInterfaceOp : TEST_Op<"op_with_infer_type_if", [
   let results = (outs AnyTensor);
 }
 
+def OpWithInferTypeAdaptorInterfaceOp : TEST_Op<"op_with_infer_type_adaptor_if", [
+    InferTypeOpAdaptor]> {
+  let arguments = (ins AnyTensor:$x, AnyTensor:$y);
+  let results = (outs AnyTensor);
+}
+
 def OpWithRefineTypeInterfaceOp : TEST_Op<"op_with_refine_type_if", [
     DeclareOpInterfaceMethods<InferTypeOpInterface,
         ["refineReturnTypes"]>]> {
@@ -772,6 +778,13 @@ def OpWithShapedTypeInferTypeInterfaceOp : TEST_Op<"op_with_shaped_type_infer_ty
       [InferTensorTypeWithReify]> {
   let arguments = (ins AnyTensor, AnyTensor);
   let results = (outs AnyTensor);
+}
+
+def OpWithShapedTypeInferTypeAdaptorInterfaceOp : 
+      TEST_Op<"op_with_shaped_type_infer_type_adaptor_if",
+              [InferTensorTypeAdaptorWithReify]> {
+  let arguments = (ins AnyTensor:$operand1, AnyTensor:$operand2);
+  let results = (outs AnyTensor:$result);
 }
 
 def OpWithResultShapeInterfaceOp : TEST_Op<"op_with_result_shape_interface",

@@ -3472,8 +3472,7 @@ template <typename BaseTy, typename ToTy>
 struct CachedReachabilityAA : public BaseTy {
   using RQITy = ReachabilityQueryInfo<ToTy>;
 
-  CachedReachabilityAA<BaseTy, ToTy>(const IRPosition &IRP, Attributor &A)
-      : BaseTy(IRP, A) {}
+  CachedReachabilityAA(const IRPosition &IRP, Attributor &A) : BaseTy(IRP, A) {}
 
   /// See AbstractAttribute::isQueryAA.
   bool isQueryAA() const override { return true; }
@@ -10421,6 +10420,11 @@ struct AACallEdgesCallSite : public AACallEdgesImpl {
     SmallVector<AA::ValueAndContext> Values;
     // Process any value that we might call.
     auto ProcessCalledOperand = [&](Value *V, Instruction *CtxI) {
+      if (isa<Constant>(V)) {
+        VisitValue(*V, CtxI);
+        return;
+      }
+
       bool UsedAssumedInformation = false;
       Values.clear();
       if (!A.getAssumedSimplifiedValues(IRPosition::value(*V), *this, Values,

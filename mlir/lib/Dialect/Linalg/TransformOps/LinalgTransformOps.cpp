@@ -156,12 +156,16 @@ void transform::ApplyEraseUnnecessaryInputsPatternsOp::populatePatterns(
 
 void transform::ApplyFoldUnitExtentDimsViaReshapesPatternsOp::populatePatterns(
     RewritePatternSet &patterns) {
-  linalg::populateFoldUnitExtentDimsViaReshapesPatterns(patterns);
+  linalg::ControlDropUnitDims options;
+  linalg::populateFoldUnitExtentDimsPatterns(patterns, options);
 }
 
 void transform::ApplyFoldUnitExtentDimsViaSlicesPatternsOp::populatePatterns(
     RewritePatternSet &patterns) {
-  linalg::populateFoldUnitExtentDimsViaSlicesPatterns(patterns);
+  linalg::ControlDropUnitDims options;
+  options.rankReductionStrategy =
+      linalg::ControlDropUnitDims::RankReductionStrategy::ExtractInsertSlice;
+  linalg::populateFoldUnitExtentDimsPatterns(patterns, options);
 }
 
 void transform::ApplyTilingCanonicalizationPatternsOp::populatePatterns(
@@ -333,6 +337,38 @@ transform::DecomposeOp::applyToOne(transform::TransformRewriter &rewriter,
 #undef DOWNSCALE_CALL
 #undef DOWNSCALE
   return emitDefaultSilenceableFailure(target);
+}
+
+//===----------------------------------------------------------------------===//
+// DecomposeInterfaceOp
+//===----------------------------------------------------------------------===//
+
+// Decompose the target operation if it implements the AggregatedOpInterface.
+// Push the decomposed operations (the ones that replaces the values produced by
+// \p target) in the `results`.
+DiagnosedSilenceableFailure transform::DecomposeInterfaceOp::applyToOne(
+    transform::TransformRewriter &rewriter, Operation *target,
+    transform::ApplyToEachResultList &results,
+    transform::TransformState &state) {
+  auto decomposableOp = dyn_cast<AggregatedOpInterface>(target);
+  if (!decomposableOp) {
+    failed(rewriter.notifyMatchFailure(target,
+                                       "payload is not a decomposable op"));
+    return emitDefaultSilenceableFailure(target);
+  }
+
+  FailureOr<SmallVector<Value>> maybeNewResults =
+      decomposableOp.decomposeOperation(rewriter);
+  if (failed(maybeNewResults))
+    return emitDefaultSilenceableFailure(target);
+
+  rewriter.replaceOp(decomposableOp, *maybeNewResults);
+  for (Value val : *maybeNewResults) {
+    Operation *definition = val.getDefiningOp();
+    if (definition)
+      results.push_back(definition);
+  }
+  return DiagnosedSilenceableFailure::success();
 }
 
 //===----------------------------------------------------------------------===//

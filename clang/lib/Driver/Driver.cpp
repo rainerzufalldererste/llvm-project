@@ -810,6 +810,12 @@ void Driver::CreateOffloadingDeviceToolChains(Compilation &C,
     if (!CudaTC) {
       CudaTC = std::make_unique<toolchains::CudaToolChain>(
           *this, *CudaTriple, *HostTC, C.getInputArgs());
+
+      // Emit a warning if the detected CUDA version is too new.
+      CudaInstallationDetector &CudaInstallation =
+          static_cast<toolchains::CudaToolChain &>(*CudaTC).CudaInstallation;
+      if (CudaInstallation.isValid())
+        CudaInstallation.WarnIfUnsupportedVersion();
     }
     C.addOffloadDeviceToolChain(CudaTC.get(), OFK);
   } else if (IsHIP) {
@@ -4824,8 +4830,6 @@ void Driver::BuildJobs(Compilation &C) const {
   }
 
   const llvm::Triple &RawTriple = C.getDefaultToolChain().getTriple();
-  if (RawTriple.isOSAIX() && LTOMode == LTOK_Thin)
-    Diag(diag::err_drv_clang_unsupported) << "thinLTO on AIX";
 
   // Collect the list of architectures.
   llvm::StringSet<> ArchNames;

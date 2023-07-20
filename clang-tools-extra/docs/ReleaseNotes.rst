@@ -274,13 +274,10 @@ Changes in existing checks
   Global options of the same name should be used instead.
 
 - Improved :doc:`bugprone-exception-escape
-  <clang-tidy/checks/bugprone/exception-escape>` to not emit warnings for
-  forward declarations of functions and additionally modified it to skip
-  ``noexcept`` functions during call stack analysis.
-
-- Fixed :doc:`bugprone-exception-escape<clang-tidy/checks/bugprone/exception-escape>`
-  for coroutines where previously a warning would be emitted with coroutines
-  throwing exceptions in their bodies.
+  <clang-tidy/checks/bugprone/exception-escape>` check to not emit warnings for
+  forward declarations of functions, explicitly declared throwing functions,
+  coroutines throwing exceptions in their bodies and skip ``noexcept``
+  functions during call stack analysis.
 
 - Improved :doc:`bugprone-fold-init-type
   <clang-tidy/checks/bugprone/fold-init-type>` to handle iterators that do not
@@ -327,6 +324,11 @@ Changes in existing checks
 
 - Deprecated :doc:`cert-dcl21-cpp
   <clang-tidy/checks/cert/dcl21-cpp>` check.
+
+- Fixed :doc:`cppcoreguidelines-avoid-const-or-ref-data-members
+  <clang-tidy/checks/cppcoreguidelines/avoid-const-or-ref-data-members>` check
+  to emit warnings only on classes that are copyable/movable, as required by the
+  corresponding rule.
 
 - Deprecated C.48 enforcement from :doc:`cppcoreguidelines-prefer-member-initializer
   <clang-tidy/checks/cppcoreguidelines/prefer-member-initializer>`. Please use
@@ -394,8 +396,8 @@ Changes in existing checks
   using macro between namespace declarations, to fix false positive when using namespace
   with attributes and to support nested inline namespace introduced in c++20.
 
-- Fixed an issue in `modernize-loop-convert
-  <clang-tidy/checks/modernize/modernize-loop-convert>` generating wrong code
+- Fixed an issue in :doc:`modernize-loop-convert
+  <clang-tidy/checks/modernize/loop-convert>` generating wrong code
   when using structured bindings.
 
 - In :doc:`modernize-use-default-member-init
@@ -422,12 +424,9 @@ Changes in existing checks
   special member functions are not available.
 
 - Improved :doc:`performance-no-automatic-move
-  <clang-tidy/checks/performance/no-automatic-move>`: warn on ``const &&``
-  constructors.
-
-- Fixed a false positive in :doc:`performance-no-automatic-move
-  <clang-tidy/checks/performance/no-automatic-move>` when warning would be
-  emitted for a const local variable to which NRVO is applied.
+  <clang-tidy/checks/performance/no-automatic-move>` check to warn on
+  ``const &&`` constructors and ignore ``const`` local variable to which NRVO
+  is applied.
 
 - Fixed an issue in the :doc:`performance-noexcept-move-constructor
   <clang-tidy/checks/performance/noexcept-move-constructor>` checker that was causing
