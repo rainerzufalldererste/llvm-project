@@ -503,7 +503,7 @@ int main(int argc, char **argv) {
 
   AsmDialect::Type AssemblerDialect = CRG.getAssemblerDialect();
   if (OutputAsmVariant >= 0)
-    AssemblerDialect = static_cast<unsigned>(OutputAsmVariant);
+    AssemblerDialect = (AsmDialect::Type)OutputAsmVariant.getValue();
   std::unique_ptr<MCInstPrinter> IP(TheTarget->createMCInstPrinter(
       Triple(TripleName), AssemblerDialect, *MAI, *MCII, *MRI));
   if (!IP) {

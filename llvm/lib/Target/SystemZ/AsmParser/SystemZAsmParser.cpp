@@ -474,7 +474,9 @@ private:
   inline bool isHLASMAlnum(char C) { return isHLASMAlpha(C) || isDigit(C); }
 
   // Are we parsing using the AD_HLASM dialect?
-  inline bool isParsingHLASM() { return getMAIAssemblerDialect() == AD_HLASM; }
+  inline bool isParsingHLASM() {
+    return getMAIAssemblerDialect() == AsmDialect::SystemZ_HLASM;
+  }
 
   // Are we parsing using the AD_ATT dialect?
   inline bool isParsingATT() {
