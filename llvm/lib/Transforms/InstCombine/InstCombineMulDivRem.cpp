@@ -700,6 +700,17 @@ Instruction *InstCombinerImpl::visitFMul(BinaryOperator &I) {
       }
     }
 
+    // (1.0/sqrt(x)) * (1.0/sqrt(x)) -> 1 / x
+    if (I.hasNoNaNs()) {
+      if (match(Op0, m_FDiv(m_SpecificFP(1.0), m_Sqrt(m_Value(X)))) &&
+          Op0 == Op1 &&
+          static_cast<BinaryOperator *>(Op0)->getOperand(1)->getNumUses() == 
+          1) {
+        return BinaryOperator::CreateFDivFMF(ConstantFP::get(I.getType(), 1.0),
+                                             X, &I);
+      }
+    }
+
     // pow(X, Y) * X --> pow(X, Y+1)
     // X * pow(X, Y) --> pow(X, Y+1)
     if (match(&I, m_c_FMul(m_OneUse(m_Intrinsic<Intrinsic::pow>(m_Value(X),
@@ -1757,6 +1768,13 @@ Instruction *InstCombinerImpl::visitFDiv(BinaryOperator &I) {
         Builder.CreateFAddFMF(Y, ConstantFP::get(I.getType(), -1.0), &I);
     Value *Pow = Builder.CreateBinaryIntrinsic(Intrinsic::pow, Op1, Y1, &I);
     return replaceInstUsesWith(I, Pow);
+  }
+
+  // X / sqrt(X) -> sqrt(X)
+  if (I.hasNoNaNs()) {
+    if (match(Op0, m_Value(X)) && match(Op1, m_Sqrt(m_Specific(X)))) {
+      return replaceInstUsesWith(I, Op1);
+    }
   }
 
   return nullptr;
