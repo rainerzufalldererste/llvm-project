@@ -95,6 +95,7 @@ set(files
   __algorithm/pstl_is_partitioned.h
   __algorithm/pstl_merge.h
   __algorithm/pstl_replace.h
+  __algorithm/pstl_sort.h
   __algorithm/pstl_stable_sort.h
   __algorithm/pstl_transform.h
   __algorithm/push_heap.h
@@ -645,6 +646,7 @@ set(files
   __ranges/subrange.h
   __ranges/take_view.h
   __ranges/take_while_view.h
+  __ranges/to.h
   __ranges/transform_view.h
   __ranges/view_interface.h
   __ranges/views.h
