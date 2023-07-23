@@ -995,41 +995,34 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
   return nullptr;
 }
 
-static bool MatchIntSquared(Value *V, Value *&A) {
-  return match(V, m_Mul(m_Value(A), m_Deferred(A)));
-}
-
-static bool MatchInt2ABPlusASquared(Value *V, Value *A, Value *&B) {
-  return match(V,
-               m_Mul(m_Add(m_Shl(m_Specific(A), m_SpecificInt(1)), m_Value(B)),
-                     m_Deferred(B)));
-}
-
-static bool MatchInt2AB(Value *V, Value *&A, Value *&B) {
-  return match(V, m_Shl(m_Mul(m_Value(A), m_Value(B)), m_SpecificInt(1))) ||
-         match(V, m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)), m_Value(B)));
-}
-
-static bool MatchIntASquaredPlusBSquared(Value *V, Value *A, Value *B) {
-  return match(V, m_Add(m_Mul(m_Specific(A), m_Specific(A)),
-                        m_Mul(m_Specific(B), m_Specific(B)))) ||
-         match(V, m_Add(m_Mul(m_Specific(B), m_Specific(B)),
-                        m_Mul(m_Specific(A), m_Specific(A))));
-}
-
+// Fold variations of a^2 + 2*a*b + b^2 -> (a + b)^2 
 Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
   Value *LHS = I.getOperand(0), *RHS = I.getOperand(1);
   Value *A, *B;
 
   // (a * a) + (((a << 1) + b) * b)
-  bool Matches =
-      (MatchIntSquared(LHS, A) && MatchInt2ABPlusASquared(RHS, A, B)) ||
-      (MatchIntSquared(RHS, A) && MatchInt2ABPlusASquared(LHS, A, B));
+  bool Matches = match(
+      &I, m_c_Add(m_OneUse(m_Mul(m_Value(A), m_Deferred(A))),
+                  m_OneUse(m_Mul(
+                      m_Add(m_Shl(m_Deferred(A), m_SpecificInt(1)), m_Value(B)),
+                      m_Deferred(B)))));
 
   // ((a * b) << 1)  or ((a << 1) * b)
   // +
   // (a * a + b * b) or (b * b + a * a)
   if (!Matches) {
+    const auto MatchInt2AB = [](Value *V, Value *&A, Value *&B) {
+      return match(V, m_OneUse(m_Shl(m_Mul(m_Value(A), m_Value(B)),
+                                     m_SpecificInt(1)))) ||
+             match(V, m_OneUse(m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)),
+                                     m_Value(B))));
+    };
+
+    const auto MatchIntASquaredPlusBSquared = [](Value *V, Value *A, Value *B) {
+      return match(V, m_c_Add(m_OneUse(m_Mul(m_Specific(A), m_Specific(A))),
+                              m_OneUse(m_Mul(m_Specific(B), m_Specific(B)))));
+    };
+
     Matches =
         (MatchInt2AB(LHS, A, B) && MatchIntASquaredPlusBSquared(RHS, A, B)) ||
         (MatchInt2AB(RHS, A, B) && MatchIntASquaredPlusBSquared(LHS, A, B));
