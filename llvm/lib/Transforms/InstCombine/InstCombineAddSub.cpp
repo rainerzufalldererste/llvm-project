@@ -995,6 +995,55 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
   return nullptr;
 }
 
+static bool MatchIntSquared(Value *V, Value *&A) {
+  return match(V, m_Mul(m_Value(A), m_Deferred(A)));
+}
+
+static bool MatchInt2ABPlusASquared(Value *V, Value *A, Value *&B) {
+  return match(V,
+               m_Mul(m_Add(m_Shl(m_Specific(A), m_SpecificInt(1)), m_Value(B)),
+                     m_Deferred(B)));
+}
+
+static bool MatchInt2AB(Value *V, Value *&A, Value *&B) {
+  return match(V, m_Shl(m_Mul(m_Value(A), m_Value(B)), m_SpecificInt(1))) ||
+         match(V, m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)), m_Value(B)));
+}
+
+static bool MatchIntASquaredPlusBSquared(Value *V, Value *A, Value *B) {
+  return match(V, m_Add(m_Mul(m_Specific(A), m_Specific(A)),
+                        m_Mul(m_Specific(B), m_Specific(B)))) ||
+         match(V, m_Add(m_Mul(m_Specific(B), m_Specific(B)),
+                        m_Mul(m_Specific(A), m_Specific(A))));
+}
+
+Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
+  Value *LHS = I.getOperand(0), *RHS = I.getOperand(1);
+  Value *A, *B;
+
+  // (a * a) + (((a << 1) + b) * b)
+  bool Matches =
+      (MatchIntSquared(LHS, A) && MatchInt2ABPlusASquared(RHS, A, B)) ||
+      (MatchIntSquared(RHS, A) && MatchInt2ABPlusASquared(LHS, A, B));
+
+  // ((a * b) << 1)  or ((a << 1) * b)
+  // +
+  // (a * a + b * b) or (b * b + a * a)
+  if (!Matches) {
+    Matches =
+        (MatchInt2AB(LHS, A, B) && MatchIntASquaredPlusBSquared(RHS, A, B)) ||
+        (MatchInt2AB(RHS, A, B) && MatchIntASquaredPlusBSquared(LHS, A, B));
+  }
+
+  // if one of them matches: -> (a + b)^2
+  if (Matches) {
+    Value *AB = Builder.CreateAdd(A, B);
+    return BinaryOperator::CreateMul(AB, AB);
+  }
+
+  return nullptr;
+}
+
 // Matches multiplication expression Op * C where C is a constant. Returns the
 // constant value in C and the other operand in Op. Returns true if such a
 // match is found.
@@ -1615,17 +1664,8 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
         I, Builder.CreateIntrinsic(Intrinsic::ctpop, {I.getType()},
                                    {Builder.CreateOr(A, B)}));
 
-  // (a * a) + ((a << 1) + b) * b -> (a + b)^2
-  // which is:
-  // (a * a) + (2 * a * b) + (b * b) -> (a + b)^2
-  if (match(RHS, m_Mul(m_Value(A), m_Deferred(A)))) {
-    if (match(LHS,
-              m_Mul(m_Add(m_Shl(m_Specific(A), m_SpecificInt(1)), m_Value(B)),
-                    m_Deferred(B)))) {
-      Value *AB = Builder.CreateAdd(A, B);
-      return BinaryOperator::CreateMul(AB, AB);
-    }
-  }
+  if (Instruction *Res = foldSquareSumInts(I))
+    return Res;
 
   if (Instruction *Res = foldBinOpOfDisplacedShifts(I))
     return Res;
