@@ -3360,11 +3360,12 @@ define i32 @add_reduce_sqr_sum_order3_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order3_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order3_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3401,11 +3402,12 @@ define i32 @add_reduce_sqr_sum_order4_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order4_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order4_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[AB]], 1
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3442,11 +3444,12 @@ define i32 @add_reduce_sqr_sum_order5_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order5_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order5_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[TWOB:%.*]] = shl i32 [[B:%.*]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[B]], [[A]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a

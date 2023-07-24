@@ -1017,8 +1017,8 @@ Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
                                            m_SpecificInt(1))),
                             m_OneUse(m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)),
                                            m_Value(B)))),
-                m_c_Add(m_OneUse(m_Mul(m_Deferred(A), m_Deferred(A))),
-                        m_OneUse(m_Mul(m_Deferred(B), m_Deferred(B))))));
+                m_OneUse(m_c_Add(m_Mul(m_Deferred(A), m_Deferred(A)),
+                                 m_Mul(m_Deferred(B), m_Deferred(B))))));
   }
 
   // if one of them matches: -> (a + b)^2
