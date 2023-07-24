@@ -3338,11 +3338,13 @@ define i32 @add_reduce_sqr_sum_order2_not_one_use2(i32 %a, i32 %b) {
 
 define i32 @add_reduce_sqr_sum_order3_not_one_use(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order3_not_one_use(
-; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A:%.*]], 1
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
 ; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[TWOAB]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3377,11 +3379,13 @@ define i32 @add_reduce_sqr_sum_order3_not_one_use2(i32 %a, i32 %b) {
 
 define i32 @add_reduce_sqr_sum_order4_not_one_use(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order4_not_one_use(
-; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A]], [[B:%.*]]
 ; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[AB]], 1
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[TWOAB]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3416,11 +3420,13 @@ define i32 @add_reduce_sqr_sum_order4_not_one_use2(i32 %a, i32 %b) {
 
 define i32 @add_reduce_sqr_sum_order5_not_one_use(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order5_not_one_use(
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
 ; CHECK-NEXT:    [[TWOB:%.*]] = shl i32 [[B:%.*]], 1
-; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[TWOAB]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[B]], [[A]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3450,6 +3456,236 @@ define i32 @add_reduce_sqr_sum_order5_not_one_use2(i32 %a, i32 %b) {
   %a2_b2 = add i32 %a_sq, %b_sq
   tail call void @fake_func (i32 %a2_b2)
   %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_invalid0(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_invalid0(
+; CHECK-NEXT:    [[TWO_A:%.*]] = shl i32 [[A:%.*]], 1
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = add i32 [[TWO_A]], [[B:%.*]]
+; CHECK-NEXT:    [[MUL1:%.*]] = add i32 [[TWO_A_PLUS_B]], [[A]]
+; CHECK-NEXT:    [[ADD:%.*]] = mul i32 [[MUL1]], [[B]]
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %not_a_sq = mul nsw i32 %a, %b
+  %two_a = shl i32 %a, 1
+  %two_a_plus_b = add i32 %two_a, %b
+  %mul = mul i32 %two_a_plus_b, %b
+  %add = add i32 %mul, %not_a_sq
+  ret i32 %add
+}
+
+define i32 @add_reduce_sqr_sum_invalid1(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_invalid1(
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[NOT_TWO_A_PLUS_B:%.*]] = mul i32 [[A]], 3
+; CHECK-NEXT:    [[MUL:%.*]] = mul i32 [[NOT_TWO_A_PLUS_B]], [[B:%.*]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %a_sq = mul nsw i32 %a, %a
+  %two_a = shl i32 %a, 1
+  %not_two_a_plus_b = add i32 %two_a, %a
+  %mul = mul i32 %not_two_a_plus_b, %b
+  %add = add i32 %mul, %a_sq
+  ret i32 %add
+}
+
+define i32 @add_reduce_sqr_sum_invalid2(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_invalid2(
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[NOT_TWO_A:%.*]] = shl i32 [[A]], 2
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = add i32 [[NOT_TWO_A]], [[B:%.*]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul i32 [[TWO_A_PLUS_B]], [[B]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %a_sq = mul nsw i32 %a, %a
+  %not_two_a = shl i32 %a, 2
+  %two_a_plus_b = add i32 %not_two_a, %b
+  %mul = mul i32 %two_a_plus_b, %b
+  %add = add i32 %mul, %a_sq
+  ret i32 %add
+}
+
+define i32 @add_reduce_sqr_sum_invalid3(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_invalid3(
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = mul i32 [[B:%.*]], 3
+; CHECK-NEXT:    [[MUL1:%.*]] = add i32 [[TWO_A_PLUS_B]], [[A:%.*]]
+; CHECK-NEXT:    [[ADD:%.*]] = mul i32 [[MUL1]], [[A]]
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %a_sq = mul nsw i32 %a, %a
+  %not_two_a = shl i32 %b, 1
+  %two_a_plus_b = add i32 %not_two_a, %b
+  %mul = mul i32 %two_a_plus_b, %a
+  %add = add i32 %mul, %a_sq
+  ret i32 %add
+}
+
+define i32 @add_reduce_sqr_sum_invalid4(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_invalid4(
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = mul i32 [[B:%.*]], 3
+; CHECK-NEXT:    [[MUL:%.*]] = mul i32 [[TWO_A_PLUS_B]], [[B]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %a_sq = mul nsw i32 %a, %a
+  %not_two_a = shl i32 %b, 1
+  %two_a_plus_b = add i32 %not_two_a, %b
+  %mul = mul i32 %two_a_plus_b, %b
+  %add = add i32 %mul, %a_sq
+  ret i32 %add
+}
+
+define i32 @add_reduce_sqr_sum_varB_invalid0(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varB_invalid0(
+; CHECK-NEXT:    [[NOT_A_B:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl nuw i32 [[NOT_A_B]], 1
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %not_a_b = mul nsw i32 %a, %a
+  %twoab = mul i32 %not_a_b, 2
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varB_invalid1(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varB_invalid1(
+; CHECK-NEXT:    [[NOT_A_B:%.*]] = mul nsw i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl nuw i32 [[NOT_A_B]], 1
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %not_a_b = mul nsw i32 %b, %b
+  %twoab = mul i32 %not_a_b, 2
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varB_invalid2(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varB_invalid2(
+; CHECK-NEXT:    [[A_B:%.*]] = mul nsw i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[NOT_TWOAB:%.*]] = shl i32 [[A_B]], 2
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[NOT_TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %a_b = mul nsw i32 %a, %b
+  %not_twoab = mul i32 %a_b, 4
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %not_twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varB_invalid3(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varB_invalid3(
+; CHECK-NEXT:    [[A_B:%.*]] = mul nsw i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[A_B]], 1
+; CHECK-NEXT:    [[B_SQ1:%.*]] = add i32 [[A]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = mul i32 [[B_SQ1]], [[B]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %a_b = mul nsw i32 %a, %b
+  %twoab = mul i32 %a_b, 2
+  %not_a_sq = mul i32 %b, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %not_a_sq, %b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varB_invalid4(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varB_invalid4(
+; CHECK-NEXT:    [[A_B:%.*]] = mul nsw i32 [[A:%.*]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[A_B]], 1
+; CHECK-NEXT:    [[NOT_B_SQ1:%.*]] = add i32 [[A]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = mul i32 [[NOT_B_SQ1]], [[A]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %a_b = mul nsw i32 %a, %b
+  %twoab = mul i32 %a_b, 2
+  %a_sq = mul i32 %a, %a
+  %not_b_sq = mul i32 %b, %a
+  %a2_b2 = add i32 %a_sq, %not_b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varC_invalid0(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varC_invalid0(
+; CHECK-NEXT:    [[NOT_TWOA:%.*]] = shl nsw i32 [[B:%.*]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[NOT_TWOA]], [[B]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %not_twoa = mul nsw i32 %b, 2
+  %twoab = mul i32 %not_twoa, %b
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varC_invalid1(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varC_invalid1(
+; CHECK-NEXT:    [[NOT_TWOA:%.*]] = shl nsw i32 [[A:%.*]], 2
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[NOT_TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %not_twoa = mul nsw i32 %a, 4
+  %twoab = mul i32 %not_twoa, %b
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %twoab, %a2_b2
+  ret i32 %ab2
+}
+
+define i32 @add_reduce_sqr_sum_varC_invalid2(i32 %a, i32 %b) {
+; CHECK-LABEL: @add_reduce_sqr_sum_varC_invalid2(
+; CHECK-NEXT:    [[TWOA:%.*]] = shl nsw i32 [[A:%.*]], 1
+; CHECK-NEXT:    [[NOT_TWOAB:%.*]] = mul i32 [[TWOA]], [[A]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[NOT_TWOAB]], [[A2_B2]]
+; CHECK-NEXT:    ret i32 [[AB2]]
+;
+  %twoa = mul nsw i32 %a, 2
+  %not_twoab = mul i32 %twoa, %a
+  %a_sq = mul i32 %a, %a
+  %b_sq = mul i32 %b, %b
+  %a2_b2 = add i32 %a_sq, %b_sq
+  %ab2 = add i32 %not_twoab, %a2_b2
   ret i32 %ab2
 }
 

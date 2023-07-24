@@ -1011,21 +1011,14 @@ Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
   // +
   // (a * a + b * b) or (b * b + a * a)
   if (!Matches) {
-    const auto MatchInt2AB = [](Value *V, Value *&A, Value *&B) {
-      return match(V, m_OneUse(m_Shl(m_Mul(m_Value(A), m_Value(B)),
-                                     m_SpecificInt(1)))) ||
-             match(V, m_OneUse(m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)),
-                                     m_Value(B))));
-    };
-
-    const auto MatchIntASquaredPlusBSquared = [](Value *V, Value *A, Value *B) {
-      return match(V, m_c_Add(m_OneUse(m_Mul(m_Specific(A), m_Specific(A))),
-                              m_OneUse(m_Mul(m_Specific(B), m_Specific(B)))));
-    };
-
-    Matches =
-        (MatchInt2AB(LHS, A, B) && MatchIntASquaredPlusBSquared(RHS, A, B)) ||
-        (MatchInt2AB(RHS, A, B) && MatchIntASquaredPlusBSquared(LHS, A, B));
+    Matches = match(
+        &I,
+        m_c_Add(m_CombineOr(m_OneUse(m_Shl(m_Mul(m_Value(A), m_Value(B)),
+                                           m_SpecificInt(1))),
+                            m_OneUse(m_Mul(m_Shl(m_Value(A), m_SpecificInt(1)),
+                                           m_Value(B)))),
+                m_c_Add(m_OneUse(m_Mul(m_Deferred(A), m_Deferred(A))),
+                        m_OneUse(m_Mul(m_Deferred(B), m_Deferred(B))))));
   }
 
   // if one of them matches: -> (a + b)^2
