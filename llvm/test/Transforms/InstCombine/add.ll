@@ -3099,8 +3099,11 @@ define i32 @add_zext_sext_i1_different_values(i1 %a, i1 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_nsw(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_nsw(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[ADD:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWO_A:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = add i32 [[TWO_A]], [[B:%.*]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul i32 [[TWO_A_PLUS_B]], [[B]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3114,8 +3117,11 @@ define i32 @add_reduce_sqr_sum_nsw(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_u(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_u(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[ADD:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWO_A:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = add i32 [[TWO_A]], [[B:%.*]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul i32 [[TWO_A_PLUS_B]], [[B]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
   %a_sq = mul i32 %a, %a
@@ -3129,8 +3135,11 @@ define i32 @add_reduce_sqr_sum_u(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_nuw(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_nuw(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[ADD:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nuw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWO_A:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWO_A_PLUS_B:%.*]] = add i32 [[TWO_A]], [[B:%.*]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i32 [[TWO_A_PLUS_B]], [[B]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[MUL]], [[A_SQ]]
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
   %a_sq = mul nuw i32 %a, %a
@@ -3144,8 +3153,11 @@ define i32 @add_reduce_sqr_sum_nuw(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order2(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB1:%.*]] = add i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB_B2:%.*]] = mul i32 [[TWOAB1]], [[B]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[A_SQ]], [[TWOAB_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3160,8 +3172,11 @@ define i32 @add_reduce_sqr_sum_order2(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order2_flipped(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order2_flipped(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB1:%.*]] = add i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB_B2:%.*]] = mul i32 [[TWOAB1]], [[B]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB_B2]], [[A_SQ]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3176,8 +3191,12 @@ define i32 @add_reduce_sqr_sum_order2_flipped(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order3(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order3(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3192,8 +3211,12 @@ define i32 @add_reduce_sqr_sum_order3(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order3_flipped(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order3_flipped(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[A2_B2]], [[TWOAB]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3208,8 +3231,12 @@ define i32 @add_reduce_sqr_sum_order3_flipped(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order4(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order4(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[AB]], 1
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3224,8 +3251,12 @@ define i32 @add_reduce_sqr_sum_order4(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order4_flipped(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order4_flipped(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[AB]], 1
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[A2_B2]], [[TWOAB]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3240,8 +3271,12 @@ define i32 @add_reduce_sqr_sum_order4_flipped(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order5(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order5(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[B:%.*]], [[A:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOB:%.*]] = shl i32 [[B:%.*]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3256,8 +3291,12 @@ define i32 @add_reduce_sqr_sum_order5(i32 %a, i32 %b) {
 ; FIXME: Should be changed by new optimization.
 define i32 @add_reduce_sqr_sum_order5_flipped(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order5_flipped(
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[B:%.*]], [[A:%.*]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
+; CHECK-NEXT:    [[TWOB:%.*]] = shl i32 [[B:%.*]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
+; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[A2_B2]], [[TWOAB]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3371,11 +3410,12 @@ define i32 @add_reduce_sqr_sum_order3_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order3_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order3_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[TWOA:%.*]] = shl i32 [[A]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOA]], [[B:%.*]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3412,11 +3452,12 @@ define i32 @add_reduce_sqr_sum_order4_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order4_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order4_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[AB:%.*]] = mul i32 [[A]], [[B:%.*]]
+; CHECK-NEXT:    [[TWOAB:%.*]] = shl i32 [[AB]], 1
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[A]], [[B]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
@@ -3453,11 +3494,12 @@ define i32 @add_reduce_sqr_sum_order5_not_one_use(i32 %a, i32 %b) {
 define i32 @add_reduce_sqr_sum_order5_not_one_use2(i32 %a, i32 %b) {
 ; CHECK-LABEL: @add_reduce_sqr_sum_order5_not_one_use2(
 ; CHECK-NEXT:    [[A_SQ:%.*]] = mul nsw i32 [[A:%.*]], [[A]]
-; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B:%.*]], [[B]]
+; CHECK-NEXT:    [[TWOB:%.*]] = shl i32 [[B:%.*]], 1
+; CHECK-NEXT:    [[TWOAB:%.*]] = mul i32 [[TWOB]], [[A]]
+; CHECK-NEXT:    [[B_SQ:%.*]] = mul i32 [[B]], [[B]]
 ; CHECK-NEXT:    [[A2_B2:%.*]] = add i32 [[A_SQ]], [[B_SQ]]
 ; CHECK-NEXT:    tail call void @fake_func(i32 [[A2_B2]])
-; CHECK-NEXT:    [[TMP1:%.*]] = add i32 [[B]], [[A]]
-; CHECK-NEXT:    [[AB2:%.*]] = mul i32 [[TMP1]], [[TMP1]]
+; CHECK-NEXT:    [[AB2:%.*]] = add i32 [[TWOAB]], [[A2_B2]]
 ; CHECK-NEXT:    ret i32 [[AB2]]
 ;
   %a_sq = mul nsw i32 %a, %a
