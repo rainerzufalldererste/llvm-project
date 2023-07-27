@@ -1834,17 +1834,12 @@ Instruction *InstCombinerImpl::foldICmpAndConstConst(ICmpInst &Cmp,
         ++UsesRemoved;
 
       // Compute A & ((1 << B) | 1)
-      Value *NewOr = nullptr;
-      if (auto *C = dyn_cast<Constant>(B)) {
-        if (UsesRemoved >= 1)
-          NewOr = ConstantExpr::getOr(ConstantExpr::getNUWShl(One, C), One);
-      } else {
-        if (UsesRemoved >= 3)
-          NewOr = Builder.CreateOr(Builder.CreateShl(One, B, LShr->getName(),
-                                                     /*HasNUW=*/true),
-                                   One, Or->getName());
-      }
-      if (NewOr) {
+      unsigned RequireUsesRemoved = match(B, m_ImmConstant()) ? 1 : 3;
+      if (UsesRemoved >= RequireUsesRemoved) {
+        Value *NewOr =
+            Builder.CreateOr(Builder.CreateShl(One, B, LShr->getName(),
+                                               /*HasNUW=*/true),
+                             One, Or->getName());
         Value *NewAnd = Builder.CreateAnd(A, NewOr, And->getName());
         return replaceOperand(Cmp, 0, NewAnd);
       }
@@ -1949,19 +1944,18 @@ Instruction *InstCombinerImpl::foldICmpAndConstant(ICmpInst &Cmp,
   return nullptr;
 }
 
-/// Fold icmp eq/ne (or (xor (X1, X2), xor(X3, X4))), 0.
-static Value *foldICmpOrXorChain(ICmpInst &Cmp, BinaryOperator *Or,
-                                 InstCombiner::BuilderTy &Builder) {
-  // Are we using xors to bitwise check for a pair or pairs of (in)equalities?
-  // Convert to a shorter form that has more potential to be folded even
-  // further.
-  // ((X1 ^ X2) || (X3 ^ X4)) == 0 --> (X1 == X2) && (X3 == X4)
-  // ((X1 ^ X2) || (X3 ^ X4)) != 0 --> (X1 != X2) || (X3 != X4)
-  // ((X1 ^ X2) || (X3 ^ X4) || (X5 ^ X6)) == 0 -->
+/// Fold icmp eq/ne (or (xor/sub (X1, X2), xor/sub (X3, X4))), 0.
+static Value *foldICmpOrXorSubChain(ICmpInst &Cmp, BinaryOperator *Or,
+                                    InstCombiner::BuilderTy &Builder) {
+  // Are we using xors or subs to bitwise check for a pair or pairs of
+  // (in)equalities? Convert to a shorter form that has more potential to be
+  // folded even further.
+  // ((X1 ^/- X2) || (X3 ^/- X4)) == 0 --> (X1 == X2) && (X3 == X4)
+  // ((X1 ^/- X2) || (X3 ^/- X4)) != 0 --> (X1 != X2) || (X3 != X4)
+  // ((X1 ^/- X2) || (X3 ^/- X4) || (X5 ^/- X6)) == 0 -->
   // (X1 == X2) && (X3 == X4) && (X5 == X6)
-  // ((X1 ^ X2) || (X3 ^ X4) || (X5 ^ X6)) != 0 -->
+  // ((X1 ^/- X2) || (X3 ^/- X4) || (X5 ^/- X6)) != 0 -->
   // (X1 != X2) || (X3 != X4) || (X5 != X6)
-  // TODO: Implement for sub
   SmallVector<std::pair<Value *, Value *>, 2> CmpValues;
   SmallVector<Value *, 16> WorkList(1, Or);
 
@@ -1972,9 +1966,16 @@ static Value *foldICmpOrXorChain(ICmpInst &Cmp, BinaryOperator *Or,
       if (match(OrOperatorArgument,
                 m_OneUse(m_Xor(m_Value(Lhs), m_Value(Rhs))))) {
         CmpValues.emplace_back(Lhs, Rhs);
-      } else {
-        WorkList.push_back(OrOperatorArgument);
+        return;
       }
+
+      if (match(OrOperatorArgument,
+                m_OneUse(m_Sub(m_Value(Lhs), m_Value(Rhs))))) {
+        CmpValues.emplace_back(Lhs, Rhs);
+        return;
+      }
+
+      WorkList.push_back(OrOperatorArgument);
     };
 
     Value *CurrentValue = WorkList.pop_back_val();
@@ -2087,7 +2088,7 @@ Instruction *InstCombinerImpl::foldICmpOrConstant(ICmpInst &Cmp,
     return BinaryOperator::Create(BOpc, CmpP, CmpQ);
   }
 
-  if (Value *V = foldICmpOrXorChain(Cmp, Or, Builder))
+  if (Value *V = foldICmpOrXorSubChain(Cmp, Or, Builder))
     return replaceInstUsesWith(Cmp, V);
 
   return nullptr;
@@ -5040,17 +5041,21 @@ static Instruction *foldICmpPow2Test(ICmpInst &I,
       A = Op0;
 
     CheckIs = Pred == ICmpInst::ICMP_EQ;
-  } else if (Pred == ICmpInst::ICMP_UGE || Pred == ICmpInst::ICMP_ULT) {
+  } else if (ICmpInst::isUnsigned(Pred)) {
     // (A ^ (A-1)) u>= A --> ctpop(A) < 2 (two commuted variants)
     // ((A-1) ^ A) u< A --> ctpop(A) > 1 (two commuted variants)
-    if (match(Op0, m_OneUse(m_c_Xor(m_Add(m_Specific(Op1), m_AllOnes()),
-                                    m_Specific(Op1)))))
-      A = Op1;
-    else if (match(Op1, m_OneUse(m_c_Xor(m_Add(m_Specific(Op0), m_AllOnes()),
-                                         m_Specific(Op0)))))
-      A = Op0;
 
-    CheckIs = Pred == ICmpInst::ICMP_UGE;
+    if ((Pred == ICmpInst::ICMP_UGE || Pred == ICmpInst::ICMP_ULT) &&
+        match(Op0, m_OneUse(m_c_Xor(m_Add(m_Specific(Op1), m_AllOnes()),
+                                    m_Specific(Op1))))) {
+      A = Op1;
+      CheckIs = Pred == ICmpInst::ICMP_UGE;
+    } else if ((Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE) &&
+               match(Op1, m_OneUse(m_c_Xor(m_Add(m_Specific(Op0), m_AllOnes()),
+                                           m_Specific(Op0))))) {
+      A = Op0;
+      CheckIs = Pred == ICmpInst::ICMP_ULE;
+    }
   }
 
   if (A) {
