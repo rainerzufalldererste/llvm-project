@@ -2454,6 +2454,9 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
                                        unsigned Depth, const SimplifyQuery &Q) {
   unsigned BitWidth = getBitWidth(I->getType()->getScalarType(), Q.DL);
   switch (I->getOpcode()) {
+  case Instruction::Alloca:
+    // Alloca never returns null, malloc might.
+    return I->getType()->getPointerAddressSpace() == 0;
   case Instruction::GetElementPtr:
     if (I->getType()->isPointerTy())
       return isGEPKnownNonNull(cast<GEPOperator>(I), Depth, Q);
@@ -2679,7 +2682,24 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
     return isKnownNonZero(I->getOperand(0), Depth, Q) &&
            isGuaranteedNotToBePoison(I->getOperand(0), Q.AC, Q.CxtI, Q.DT,
                                      Depth);
+  case Instruction::Load:
+    // A Load tagged with nonnull metadata is never null.
+    if (Q.IIQ.getMetadata(cast<LoadInst>(I), LLVMContext::MD_nonnull))
+      return true;
+
+    // No need to fall through to computeKnownBits as range metadata is already
+    // handled in isKnownNonZero.
+    return false;
   case Instruction::Call:
+  case Instruction::Invoke:
+    if (I->getType()->isPointerTy()) {
+      const auto *Call = cast<CallBase>(I);
+      if (Call->isReturnNonNull())
+        return true;
+      if (const auto *RP = getArgumentAliasingToReturnedPointer(Call, true))
+        return isKnownNonZero(RP, Depth, Q);
+    }
+
     if (auto *II = dyn_cast<IntrinsicInst>(I)) {
       switch (II->getIntrinsicID()) {
       case Intrinsic::sshl_sat:
@@ -2830,10 +2850,6 @@ bool isKnownNonZero(const Value *V, const APInt &DemandedElts, unsigned Depth,
   // Check for pointer simplifications.
 
   if (PointerType *PtrTy = dyn_cast<PointerType>(V->getType())) {
-    // Alloca never returns null, malloc might.
-    if (isa<AllocaInst>(V) && PtrTy->getAddressSpace() == 0)
-      return true;
-
     // A byval, inalloca may not be null in a non-default addres space. A
     // nonnull argument is assumed never 0.
     if (const Argument *A = dyn_cast<Argument>(V)) {
@@ -2841,18 +2857,6 @@ bool isKnownNonZero(const Value *V, const APInt &DemandedElts, unsigned Depth,
             !NullPointerIsDefined(A->getParent(), PtrTy->getAddressSpace())) ||
            A->hasNonNullAttr()))
         return true;
-    }
-
-    // A Load tagged with nonnull metadata is never null.
-    if (const LoadInst *LI = dyn_cast<LoadInst>(V))
-      if (Q.IIQ.getMetadata(LI, LLVMContext::MD_nonnull))
-        return true;
-
-    if (const auto *Call = dyn_cast<CallBase>(V)) {
-      if (Call->isReturnNonNull())
-        return true;
-      if (const auto *RP = getArgumentAliasingToReturnedPointer(Call, true))
-        return isKnownNonZero(RP, Depth, Q);
     }
   }
 
