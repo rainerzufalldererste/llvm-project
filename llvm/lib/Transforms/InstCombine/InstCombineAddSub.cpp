@@ -1003,9 +1003,9 @@ Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
   // (a * a) + (((a << 1) + b) * b)
   bool Matches = match(
       &I, m_c_Add(m_OneUse(m_Mul(m_Value(A), m_Deferred(A))),
-                  m_OneUse(m_Mul(
-                      m_Add(m_Shl(m_Deferred(A), m_SpecificInt(1)), m_Value(B)),
-                      m_Deferred(B)))));
+                  m_OneUse(m_Mul(m_c_Add(m_Shl(m_Deferred(A), m_SpecificInt(1)),
+                                         m_Value(B)),
+                                 m_Deferred(B)))));
 
   // ((a * b) << 1)  or ((a << 1) * b)
   // +
