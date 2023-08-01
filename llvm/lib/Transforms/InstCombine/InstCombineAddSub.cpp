@@ -997,7 +997,6 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
 
 // Fold variations of a^2 + 2*a*b + b^2 -> (a + b)^2 
 Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
-  Value *LHS = I.getOperand(0), *RHS = I.getOperand(1);
   Value *A, *B;
 
   // (a * a) + (((a << 1) + b) * b)
