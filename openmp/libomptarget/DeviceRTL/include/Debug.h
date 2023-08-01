@@ -31,6 +31,9 @@ void __assert_fail(const char *expr, const char *msg, const char *file,
     else                                                                       \
       __assert_assume(expr);                                                   \
   }
+#define UNREACHABLE(msg)                                                       \
+  PRINT(msg);                                                                  \
+  __builtin_trap();
 
 ///}
 
@@ -50,8 +53,6 @@ void __assert_fail(const char *expr, const char *msg, const char *file,
 struct DebugEntryRAII {
   DebugEntryRAII(const char *File, const unsigned Line, const char *Function);
   ~DebugEntryRAII();
-
-  static void init();
 };
 
 #endif

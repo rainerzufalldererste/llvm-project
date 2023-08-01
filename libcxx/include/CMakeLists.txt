@@ -479,6 +479,25 @@ set(files
   __locale_dir/locale_base_api/bsd_locale_defaults.h
   __locale_dir/locale_base_api/bsd_locale_fallbacks.h
   __locale_dir/locale_base_api/locale_guard.h
+  __math/abs.h
+  __math/copysign.h
+  __math/error_functions.h
+  __math/exponential_functions.h
+  __math/fdim.h
+  __math/fma.h
+  __math/gamma.h
+  __math/hyperbolic_functions.h
+  __math/hypot.h
+  __math/inverse_hyperbolic_functions.h
+  __math/inverse_trigonometric_functions.h
+  __math/logarithms.h
+  __math/min_max.h
+  __math/modulo.h
+  __math/remainder.h
+  __math/roots.h
+  __math/rounding_functions.h
+  __math/traits.h
+  __math/trigonometric_functions.h
   __mbstate_t.h
   __mdspan/default_accessor.h
   __mdspan/extents.h
@@ -653,6 +672,7 @@ set(files
   __ranges/views.h
   __ranges/zip_view.h
   __split_buffer
+  __std_clang_module
   __std_mbstate_t.h
   __stop_token/atomic_unique_lock.h
   __stop_token/intrusive_list_view.h

@@ -125,17 +125,17 @@ public:
 private:
   TerminatorVisitorRetTy extendFlowCondition(const Expr &Cond) {
     // The terminator sub-expression might not be evaluated.
-    if (Env.getValueStrict(Cond) == nullptr)
+    if (Env.getValue(Cond) == nullptr)
       transfer(StmtToEnv, Cond, Env);
 
-    auto *Val = cast_or_null<BoolValue>(Env.getValueStrict(Cond));
+    auto *Val = cast_or_null<BoolValue>(Env.getValue(Cond));
     // Value merging depends on flow conditions from different environments
     // being mutually exclusive -- that is, they cannot both be true in their
     // entirety (even if they may share some clauses). So, we need *some* value
     // for the condition expression, even if just an atom.
     if (Val == nullptr) {
       Val = &Env.makeAtomicBoolValue();
-      Env.setValueStrict(Cond, *Val);
+      Env.setValue(Cond, *Val);
     }
 
     bool ConditionValue = true;
@@ -402,12 +402,12 @@ builtinTransferInitializer(const CFGInitializer &Elt,
   // the `AggregateStorageLocation` already exists. We should explore if there's
   // anything that we can do to change this.
   if (Member->getType()->isReferenceType()) {
-    auto *InitExprLoc = Env.getStorageLocationStrict(*InitExpr);
+    auto *InitExprLoc = Env.getStorageLocation(*InitExpr);
     if (InitExprLoc == nullptr)
       return;
 
     ParentLoc->setChild(*Member, InitExprLoc);
-  } else if (auto *InitExprVal = Env.getValueStrict(*InitExpr)) {
+  } else if (auto *InitExprVal = Env.getValue(*InitExpr)) {
     if (Member->getType()->isRecordType()) {
       auto *InitValStruct = cast<StructValue>(InitExprVal);
       // FIXME: Rather than performing a copy here, we should really be
