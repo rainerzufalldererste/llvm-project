@@ -87,10 +87,23 @@ public:
   bool isMin() const { return F.isSmallest(); }
   bool isMinusOne() const { return F.isExactlyValue(-1.0); }
   bool isNan() const { return F.isNaN(); }
+  bool isInf() const { return F.isInfinity(); }
   bool isFinite() const { return F.isFinite(); }
+  bool isNormal() const { return F.isNormal(); }
 
   ComparisonCategoryResult compare(const Floating &RHS) const {
-    return Compare(F, RHS.F);
+    llvm::APFloatBase::cmpResult CmpRes = F.compare(RHS.F);
+    switch (CmpRes) {
+    case llvm::APFloatBase::cmpLessThan:
+      return ComparisonCategoryResult::Less;
+    case llvm::APFloatBase::cmpEqual:
+      return ComparisonCategoryResult::Equal;
+    case llvm::APFloatBase::cmpGreaterThan:
+      return ComparisonCategoryResult::Greater;
+    case llvm::APFloatBase::cmpUnordered:
+      return ComparisonCategoryResult::Unordered;
+    }
+    llvm_unreachable("Inavlid cmpResult value");
   }
 
   static APFloat::opStatus fromIntegral(APSInt Val,

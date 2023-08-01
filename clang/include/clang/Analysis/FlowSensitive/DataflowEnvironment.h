@@ -38,18 +38,6 @@
 namespace clang {
 namespace dataflow {
 
-/// Indicates what kind of indirections should be skipped past when retrieving
-/// storage locations or values.
-///
-/// FIXME: Consider renaming this or replacing it with a more appropriate model.
-/// See the discussion in https://reviews.llvm.org/D116596 for context.
-enum class SkipPast {
-  /// No indirections should be skipped past.
-  None,
-  /// An optional reference should be skipped past.
-  Reference,
-};
-
 /// Indicates the result of a tentative comparison.
 enum class ComparisonResult {
   Same,
@@ -279,38 +267,19 @@ public:
   /// refers directly to the referenced object, not a `ReferenceValue`.
   StorageLocation *getStorageLocation(const ValueDecl &D) const;
 
-  /// Assigns `Loc` as the storage location of `E` in the environment.
-  ///
-  /// This function is deprecated; prefer `setStorageLocationStrict()`.
-  /// For details, see https://discourse.llvm.org/t/70086.
-  ///
-  /// Requirements:
-  ///
-  ///  `E` must not be assigned a storage location in the environment.
-  void setStorageLocation(const Expr &E, StorageLocation &Loc);
-
   /// Assigns `Loc` as the storage location of the glvalue `E` in the
   /// environment.
-  ///
-  /// This function is the preferred alternative to
-  /// `setStorageLocation(const Expr &, StorageLocation &)`. Once the migration
-  /// to strict handling of value categories is complete (see
-  /// https://discourse.llvm.org/t/70086), `setStorageLocation()` will be
-  /// removed and this function will be renamed to `setStorageLocation()`.
   ///
   /// Requirements:
   ///
   ///  `E` must not be assigned a storage location in the environment.
   ///  `E` must be a glvalue or a `BuiltinType::BuiltinFn`
-  void setStorageLocationStrict(const Expr &E, StorageLocation &Loc);
+  void setStorageLocation(const Expr &E, StorageLocation &Loc);
 
-  /// Returns the storage location assigned to `E` in the environment, applying
-  /// the `SP` policy for skipping past indirections, or null if `E` isn't
-  /// assigned a storage location in the environment.
-  ///
-  /// This function is deprecated; prefer `getStorageLocationStrict()`.
-  /// For details, see https://discourse.llvm.org/t/70086.
-  StorageLocation *getStorageLocation(const Expr &E, SkipPast SP) const;
+  /// Deprecated synonym for `setStorageLocation()`.
+  void setStorageLocationStrict(const Expr &E, StorageLocation &Loc) {
+    setStorageLocation(E, Loc);
+  }
 
   /// Returns the storage location assigned to the glvalue `E` in the
   /// environment, or null if `E` isn't assigned a storage location in the
@@ -319,15 +288,14 @@ public:
   /// If the storage location for `E` is associated with a
   /// `ReferenceValue RefVal`, returns `RefVal.getReferentLoc()` instead.
   ///
-  /// This function is the preferred alternative to
-  /// `getStorageLocation(const Expr &, SkipPast)`. Once the migration
-  /// to strict handling of value categories is complete (see
-  /// https://discourse.llvm.org/t/70086), `getStorageLocation()` will be
-  /// removed and this function will be renamed to `getStorageLocation()`.
-  ///
   /// Requirements:
   ///  `E` must be a glvalue or a `BuiltinType::BuiltinFn`
-  StorageLocation *getStorageLocationStrict(const Expr &E) const;
+  StorageLocation *getStorageLocation(const Expr &E) const;
+
+  /// Deprecated synonym for `getStorageLocation()`.
+  StorageLocation *getStorageLocationStrict(const Expr &E) const {
+    return getStorageLocation(E);
+  }
 
   /// Returns the storage location assigned to the `this` pointee in the
   /// environment or null if the `this` pointee has no assigned storage location
@@ -484,36 +452,22 @@ public:
   ///  same as that of any `StructValue` that has already been associated with
   ///  `E`. This is to guarantee that the result object initialized by a prvalue
   ///  `StructValue` has a durable storage location.
-  void setValueStrict(const Expr &E, Value &Val);
+  void setValue(const Expr &E, Value &Val);
+
+  /// Deprecated synonym for `setValue()`.
+  void setValueStrict(const Expr &E, Value &Val) { setValue(E, Val); }
 
   /// Returns the value assigned to `Loc` in the environment or null if `Loc`
   /// isn't assigned a value in the environment.
   Value *getValue(const StorageLocation &Loc) const;
 
-  /// Equivalent to `getValue(getStorageLocation(D, SP), SkipPast::None)` if `D`
-  /// is assigned a storage location in the environment, otherwise returns null.
+  /// Equivalent to `getValue(getStorageLocation(D))` if `D` is assigned a
+  /// storage location in the environment, otherwise returns null.
   Value *getValue(const ValueDecl &D) const;
 
-  /// Equivalent to `getValue(getStorageLocation(E, SP), SkipPast::None)` if `E`
-  /// is assigned a storage location in the environment, otherwise returns null.
-  ///
-  /// This function is deprecated; prefer `getValueStrict()`. For details, see
-  /// https://discourse.llvm.org/t/70086.
-  Value *getValue(const Expr &E, SkipPast SP) const;
-
-  /// Returns the `Value` assigned to the prvalue `E` in the environment, or
-  /// null if `E` isn't assigned a value in the environment.
-  ///
-  /// This function is the preferred alternative to
-  /// `getValue(const Expr &, SkipPast)`. Once the migration to strict handling
-  /// of value categories is complete (see https://discourse.llvm.org/t/70086),
-  /// `getValue()` will be removed and this function will be renamed to
-  /// `getValue()`.
-  ///
-  /// Requirements:
-  ///
-  ///  `E` must be a prvalue
-  Value *getValueStrict(const Expr &E) const;
+  /// Equivalent to `getValue(getStorageLocation(E, SP))` if `E` is assigned a
+  /// storage location in the environment, otherwise returns null.
+  Value *getValue(const Expr &E) const;
 
   // FIXME: should we deprecate the following & call arena().create() directly?
 
@@ -644,6 +598,14 @@ private:
   // The copy-constructor is for use in fork() only.
   Environment(const Environment &) = default;
 
+  /// Internal version of `setStorageLocation()` that doesn't check if the
+  /// expression is a prvalue.
+  void setStorageLocationInternal(const Expr &E, StorageLocation &Loc);
+
+  /// Internal version of `getStorageLocation()` that doesn't check if the
+  /// expression is a prvalue.
+  StorageLocation *getStorageLocationInternal(const Expr &E) const;
+
   /// Creates a value appropriate for `Type`, if `Type` is supported, otherwise
   /// return null.
   ///
@@ -671,9 +633,6 @@ private:
   /// `D` and `InitExpr` may be null.
   StorageLocation &createObjectInternal(const VarDecl *D, QualType Ty,
                                         const Expr *InitExpr);
-
-  StorageLocation &skip(StorageLocation &Loc, SkipPast SP) const;
-  const StorageLocation &skip(const StorageLocation &Loc, SkipPast SP) const;
 
   /// Shared implementation of `pushCall` overloads. Note that unlike
   /// `pushCall`, this member is invoked on the environment of the callee, not
