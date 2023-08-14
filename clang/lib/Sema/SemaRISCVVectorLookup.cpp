@@ -133,6 +133,7 @@ static QualType RVVType2Qual(ASTContext &Context, const RVVType *Type) {
     }
     break;
   case Invalid:
+  case Undefined:
     llvm_unreachable("Unhandled type.");
   }
   if (Type->isVector()) {
@@ -201,10 +202,20 @@ public:
 void RISCVIntrinsicManagerImpl::ConstructRVVIntrinsics(
     ArrayRef<RVVIntrinsicRecord> Recs, IntrinsicKind K) {
   const TargetInfo &TI = Context.getTargetInfo();
-  bool HasRV64 = TI.hasFeature("64bit");
+  static const std::pair<const char *, uint8_t> FeatureCheckList[] = {
+      {"64bit", RVV_REQ_RV64},
+      {"xsfvcp", RVV_REQ_Xsfvcp}};
+
   // Construction of RVVIntrinsicRecords need to sync with createRVVIntrinsics
   // in RISCVVEmitter.cpp.
   for (auto &Record : Recs) {
+    // Check requirements.
+    if (llvm::any_of(FeatureCheckList, [&](const auto &Item) {
+          return (Record.RequiredExtensions & Item.second) == Item.second &&
+                 !TI.hasFeature(Item.first);
+        }))
+      continue;
+
     // Create Intrinsics for each type and LMUL.
     BasicType BaseType = BasicType::Unknown;
     ArrayRef<PrototypeDescriptor> BasicProtoSeq =
@@ -248,11 +259,6 @@ void RISCVIntrinsicManagerImpl::ConstructRVVIntrinsics(
       BaseType = static_cast<BasicType>(BaseTypeI);
 
       if ((BaseTypeI & Record.TypeRangeMask) != BaseTypeI)
-        continue;
-
-      // Check requirement.
-      if (((Record.RequiredExtensions & RVV_REQ_RV64) == RVV_REQ_RV64) &&
-          !HasRV64)
         continue;
 
       // Expanded with different LMUL.

@@ -10,6 +10,7 @@
 // MLIR, and the LLVM IR dialect.  It also registers the dialect.
 //
 //===----------------------------------------------------------------------===//
+
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "LLVMInlining.h"
 #include "TypeDetail.h"
@@ -1002,6 +1003,36 @@ Operation::operand_range CallOp::getArgOperands() {
   return getOperands().drop_front(getCallee().has_value() ? 0 : 1);
 }
 
+MutableOperandRange CallOp::getArgOperandsMutable() {
+  return MutableOperandRange(*this, getCallee().has_value() ? 0 : 1,
+                             getCalleeOperands().size());
+}
+
+/// Verify that an inlinable callsite of a debug-info-bearing function in a
+/// debug-info-bearing function has a debug location attached to it. This
+/// mirrors an LLVM IR verifier.
+static LogicalResult verifyCallOpDebugInfo(CallOp callOp, LLVMFuncOp callee) {
+  if (callee.isExternal())
+    return success();
+  auto parentFunc = callOp->getParentOfType<FunctionOpInterface>();
+  if (!parentFunc)
+    return success();
+
+  auto hasSubprogram = [](Operation *op) {
+    return op->getLoc()
+               ->findInstanceOf<FusedLocWith<LLVM::DISubprogramAttr>>() !=
+           nullptr;
+  };
+  if (!hasSubprogram(parentFunc) || !hasSubprogram(callee))
+    return success();
+  bool containsLoc = !isa<UnknownLoc>(callOp->getLoc());
+  if (!containsLoc)
+    return callOp.emitError()
+           << "inlinable function call in a function with a DISubprogram "
+              "location must have a debug location";
+  return success();
+}
+
 LogicalResult CallOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
   if (getNumResults() > 1)
     return emitOpError("must have 0 or 1 result");
@@ -1040,6 +1071,8 @@ LogicalResult CallOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
       return emitOpError() << "'" << calleeName.getValue()
                            << "' does not reference a valid LLVM function";
 
+    if (failed(verifyCallOpDebugInfo(*this, fn)))
+      return failure();
     fnType = fn.getFunctionType();
   }
 
@@ -1234,6 +1267,11 @@ void InvokeOp::setCalleeFromCallable(CallInterfaceCallable callee) {
 
 Operation::operand_range InvokeOp::getArgOperands() {
   return getOperands().drop_front(getCallee().has_value() ? 0 : 1);
+}
+
+MutableOperandRange InvokeOp::getArgOperandsMutable() {
+  return MutableOperandRange(*this, getCallee().has_value() ? 0 : 1,
+                             getCalleeOperands().size());
 }
 
 LogicalResult InvokeOp::verify() {
@@ -2786,46 +2824,13 @@ OpFoldResult LLVM::OrOp::fold(FoldAdaptor adaptor) {
 }
 
 //===----------------------------------------------------------------------===//
-// Utilities for LLVM::MetadataOp
+// CallIntrinsicOp
 //===----------------------------------------------------------------------===//
 
-void MetadataOp::build(OpBuilder &builder, OperationState &result,
-                       StringRef symName, bool createBodyBlock,
-                       ArrayRef<NamedAttribute> attributes) {
-  result.addAttribute(getSymNameAttrName(result.name),
-                      builder.getStringAttr(symName));
-  result.attributes.append(attributes.begin(), attributes.end());
-  Region *body = result.addRegion();
-  if (createBodyBlock)
-    body->emplaceBlock();
-}
-
-ParseResult MetadataOp::parse(OpAsmParser &parser, OperationState &result) {
-  StringAttr symName;
-  if (parser.parseSymbolName(symName, getSymNameAttrName(result.name),
-                             result.attributes) ||
-      parser.parseOptionalAttrDictWithKeyword(result.attributes))
-    return failure();
-
-  Region *bodyRegion = result.addRegion();
-  if (parser.parseRegion(*bodyRegion))
-    return failure();
-
-  // If the region appeared to be empty to parseRegion(),
-  // add the body block explicitly.
-  if (bodyRegion->empty())
-    bodyRegion->emplaceBlock();
-
+LogicalResult CallIntrinsicOp::verify() {
+  if (!getIntrin().startswith("llvm."))
+    return emitOpError() << "intrinsic name must start with 'llvm.'";
   return success();
-}
-
-void MetadataOp::print(OpAsmPrinter &printer) {
-  printer << ' ';
-  printer.printSymbolName(getSymName());
-  printer.printOptionalAttrDictWithKeyword((*this)->getAttrs(),
-                                           {getSymNameAttrName().getValue()});
-  printer << ' ';
-  printer.printRegion(getBody());
 }
 
 //===----------------------------------------------------------------------===//
@@ -2841,12 +2846,12 @@ struct LLVMOpAsmDialectInterface : public OpAsmDialectInterface {
         .Case<AccessGroupAttr, AliasScopeAttr, AliasScopeDomainAttr,
               DIBasicTypeAttr, DICompileUnitAttr, DICompositeTypeAttr,
               DIDerivedTypeAttr, DIFileAttr, DILabelAttr, DILexicalBlockAttr,
-              DILexicalBlockFileAttr, DILocalVariableAttr, DINamespaceAttr,
-              DINullTypeAttr, DISubprogramAttr, DISubroutineTypeAttr,
-              LoopAnnotationAttr, LoopVectorizeAttr, LoopInterleaveAttr,
-              LoopUnrollAttr, LoopUnrollAndJamAttr, LoopLICMAttr,
-              LoopDistributeAttr, LoopPipelineAttr, LoopPeeledAttr,
-              LoopUnswitchAttr, TBAARootAttr, TBAATagAttr,
+              DILexicalBlockFileAttr, DILocalVariableAttr, DIModuleAttr,
+              DINamespaceAttr, DINullTypeAttr, DISubprogramAttr,
+              DISubroutineTypeAttr, LoopAnnotationAttr, LoopVectorizeAttr,
+              LoopInterleaveAttr, LoopUnrollAttr, LoopUnrollAndJamAttr,
+              LoopLICMAttr, LoopDistributeAttr, LoopPipelineAttr,
+              LoopPeeledAttr, LoopUnswitchAttr, TBAARootAttr, TBAATagAttr,
               TBAATypeDescriptorAttr>([&](auto attr) {
           os << decltype(attr)::getMnemonic();
           return AliasResult::OverridableAlias;

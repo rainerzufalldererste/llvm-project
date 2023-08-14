@@ -43,7 +43,7 @@ static const MachineMemOperand::Flags MONoClobber =
 
 /// Utility to store machine instructions worklist.
 struct SIInstrWorklist {
-  SIInstrWorklist() : InstrList() {}
+  SIInstrWorklist() = default;
 
   void insert(MachineInstr *MI);
 
@@ -529,6 +529,14 @@ public:
 
   bool isDS(uint16_t Opcode) const {
     return get(Opcode).TSFlags & SIInstrFlags::DS;
+  }
+
+  static bool isGWS(const MachineInstr &MI) {
+    return MI.getDesc().TSFlags & SIInstrFlags::GWS;
+  }
+
+  bool isGWS(uint16_t Opcode) const {
+    return get(Opcode).TSFlags & SIInstrFlags::GWS;
   }
 
   bool isAlwaysGDS(uint16_t Opcode) const;

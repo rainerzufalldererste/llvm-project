@@ -45,16 +45,25 @@ class SemanticsContext;
 namespace lower {
 
 class AbstractConverter;
+class StatementContext;
 
 namespace pft {
 struct Evaluation;
 } // namespace pft
 
+static constexpr llvm::StringRef declarePostAllocSuffix =
+    "_acc_declare_update_desc_post_alloc";
+static constexpr llvm::StringRef declarePreDeallocSuffix =
+    "_acc_declare_update_desc_pre_dealloc";
+static constexpr llvm::StringRef declarePostDeallocSuffix =
+    "_acc_declare_update_desc_post_dealloc";
+
 void genOpenACCConstruct(AbstractConverter &,
                          Fortran::semantics::SemanticsContext &,
                          pft::Evaluation &, const parser::OpenACCConstruct &);
 void genOpenACCDeclarativeConstruct(
-    AbstractConverter &, pft::Evaluation &,
+    AbstractConverter &, Fortran::semantics::SemanticsContext &,
+    StatementContext &, pft::Evaluation &,
     const parser::OpenACCDeclarativeConstruct &);
 
 /// Get a acc.private.recipe op for the given type or create it if it does not

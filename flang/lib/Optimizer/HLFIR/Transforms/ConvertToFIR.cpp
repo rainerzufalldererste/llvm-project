@@ -240,8 +240,7 @@ public:
   matchAndRewrite(hlfir::CopyInOp copyInOp,
                   mlir::PatternRewriter &rewriter) const override {
     mlir::Location loc = copyInOp.getLoc();
-    auto module = copyInOp->getParentOfType<mlir::ModuleOp>();
-    fir::FirOpBuilder builder(rewriter, fir::getKindMapping(module));
+    fir::FirOpBuilder builder(rewriter, copyInOp.getOperation());
     CopyInResult result = copyInOp.getVarIsPresent()
                               ? genOptionalCopyIn(loc, builder, copyInOp)
                               : genNonOptionalCopyIn(loc, builder, copyInOp);
@@ -259,8 +258,7 @@ public:
   matchAndRewrite(hlfir::CopyOutOp copyOutOp,
                   mlir::PatternRewriter &rewriter) const override {
     mlir::Location loc = copyOutOp.getLoc();
-    auto module = copyOutOp->getParentOfType<mlir::ModuleOp>();
-    fir::FirOpBuilder builder(rewriter, fir::getKindMapping(module));
+    fir::FirOpBuilder builder(rewriter, copyOutOp.getOperation());
 
     builder.genIfThen(loc, copyOutOp.getWasCopied())
         .genThen([&]() {
@@ -314,17 +312,24 @@ public:
     if (auto attrs = declareOp.getFortranAttrs())
       fortranAttrs =
           fir::FortranVariableFlagsAttr::get(rewriter.getContext(), *attrs);
-    auto firBase = rewriter
-                       .create<fir::DeclareOp>(
-                           loc, memref.getType(), memref, declareOp.getShape(),
-                           declareOp.getTypeparams(), declareOp.getUniqName(),
-                           fortranAttrs)
-                       .getResult();
+    auto firDeclareOp = rewriter.create<fir::DeclareOp>(
+        loc, memref.getType(), memref, declareOp.getShape(),
+        declareOp.getTypeparams(), declareOp.getUniqName(), fortranAttrs);
+
+    // Propagate other attributes from hlfir.declare to fir.declare.
+    // OpenACC's acc.declare is one example. Right now, the propagation
+    // is verbatim.
+    mlir::NamedAttrList elidedAttrs =
+        mlir::NamedAttrList{firDeclareOp->getAttrs()};
+    for (const mlir::NamedAttribute &attr : declareOp->getAttrs())
+      if (!elidedAttrs.get(attr.getName()))
+        firDeclareOp->setAttr(attr.getName(), attr.getValue());
+
+    auto firBase = firDeclareOp.getResult();
     mlir::Value hlfirBase;
     mlir::Type hlfirBaseType = declareOp.getBase().getType();
     if (hlfirBaseType.isa<fir::BaseBoxType>()) {
-      auto module = declareOp->getParentOfType<mlir::ModuleOp>();
-      fir::FirOpBuilder builder(rewriter, fir::getKindMapping(module));
+      fir::FirOpBuilder builder(rewriter, declareOp.getOperation());
       // Helper to generate the hlfir fir.box with the local lower bounds and
       // type parameters.
       auto genHlfirBox = [&]() -> mlir::Value {
@@ -423,8 +428,7 @@ public:
   matchAndRewrite(hlfir::DesignateOp designate,
                   mlir::PatternRewriter &rewriter) const override {
     mlir::Location loc = designate.getLoc();
-    auto module = designate->getParentOfType<mlir::ModuleOp>();
-    fir::FirOpBuilder builder(rewriter, fir::getKindMapping(module));
+    fir::FirOpBuilder builder(rewriter, designate.getOperation());
 
     hlfir::Entity baseEntity(designate.getMemref());
 

@@ -389,7 +389,7 @@ AArch64RegisterBankInfo::getInstrAlternativeMappings(
 }
 
 void AArch64RegisterBankInfo::applyMappingImpl(
-    const OperandsMapper &OpdMapper) const {
+    MachineIRBuilder &Builder, const OperandsMapper &OpdMapper) const {
   switch (OpdMapper.getMI().getOpcode()) {
   case TargetOpcode::G_OR:
   case TargetOpcode::G_BITCAST:
@@ -486,9 +486,8 @@ AArch64RegisterBankInfo::getSameKindOfOperandsMapping(
 /// \returns true if a given intrinsic only uses and defines FPRs.
 static bool isFPIntrinsic(const MachineRegisterInfo &MRI,
                           const MachineInstr &MI) {
-  assert(MI.getOpcode() == TargetOpcode::G_INTRINSIC);
   // TODO: Add more intrinsics.
-  switch (MI.getIntrinsicID()) {
+  switch (cast<GIntrinsic>(MI).getIntrinsicID()) {
   default:
     return false;
   case Intrinsic::aarch64_neon_uaddlv:
@@ -997,6 +996,8 @@ AArch64RegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case TargetOpcode::G_VECREDUCE_FMUL:
   case TargetOpcode::G_VECREDUCE_FMAX:
   case TargetOpcode::G_VECREDUCE_FMIN:
+  case TargetOpcode::G_VECREDUCE_FMAXIMUM:
+  case TargetOpcode::G_VECREDUCE_FMINIMUM:
   case TargetOpcode::G_VECREDUCE_ADD:
   case TargetOpcode::G_VECREDUCE_MUL:
   case TargetOpcode::G_VECREDUCE_AND:

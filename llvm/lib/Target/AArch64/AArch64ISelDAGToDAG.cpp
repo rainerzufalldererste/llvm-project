@@ -420,7 +420,6 @@ public:
   bool tryBitfieldInsertOp(SDNode *N);
   bool tryBitfieldInsertInZeroOp(SDNode *N);
   bool tryShiftAmountMod(SDNode *N);
-  bool tryHighFPExt(SDNode *N);
 
   bool tryReadRegister(SDNode *N);
   bool tryWriteRegister(SDNode *N);
@@ -2470,35 +2469,6 @@ bool AArch64DAGToDAGISel::tryBitfieldExtractOpFromSExt(SDNode *N) {
   return true;
 }
 
-/// Try to form fcvtl2 instructions from a floating-point extend of a high-half
-/// extract of a subvector.
-bool AArch64DAGToDAGISel::tryHighFPExt(SDNode *N) {
-  assert(N->getOpcode() == ISD::FP_EXTEND);
-
-  // There are 2 forms of fcvtl2 - extend to double or extend to float.
-  SDValue Extract = N->getOperand(0);
-  EVT VT = N->getValueType(0);
-  EVT NarrowVT = Extract.getValueType();
-  if ((VT != MVT::v2f64 || NarrowVT != MVT::v2f32) &&
-      (VT != MVT::v4f32 || NarrowVT != MVT::v4f16))
-    return false;
-
-  // Optionally look past a bitcast.
-  Extract = peekThroughBitcasts(Extract);
-  if (Extract.getOpcode() != ISD::EXTRACT_SUBVECTOR)
-    return false;
-
-  // Match extract from start of high half index.
-  // Example: v8i16 -> v4i16 means the extract must begin at index 4.
-  unsigned ExtractIndex = Extract.getConstantOperandVal(1);
-  if (ExtractIndex != Extract.getValueType().getVectorNumElements())
-    return false;
-
-  auto Opcode = VT == MVT::v2f64 ? AArch64::FCVTLv4i32 : AArch64::FCVTLv8i16;
-  CurDAG->SelectNodeTo(N, Opcode, VT, Extract.getOperand(0));
-  return true;
-}
-
 static bool isBitfieldExtractOp(SelectionDAG *CurDAG, SDNode *N, unsigned &Opc,
                                 SDValue &Opd0, unsigned &Immr, unsigned &Imms,
                                 unsigned NumberOfIgnoredLowBits = 0,
@@ -4272,11 +4242,6 @@ void AArch64DAGToDAGISel::Select(SDNode *Node) {
       return;
     break;
 
-  case ISD::FP_EXTEND:
-    if (tryHighFPExt(Node))
-      return;
-    break;
-
   case ISD::OR:
     if (tryBitfieldInsertOp(Node))
       return;
@@ -4695,68 +4660,188 @@ void AArch64DAGToDAGISel::Select(SDNode *Node) {
     }
     case Intrinsic::aarch64_sve_ld1_pn_x2: {
       if (VT == MVT::nxv16i8) {
-        SelectContiguousMultiVectorLoad(Node, 2, 0, AArch64::LD1B_2Z_IMM, AArch64::LD1B_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 2, 0, AArch64::LD1B_2Z_IMM_PSEUDO, AArch64::LD1B_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 0, AArch64::LD1B_2Z_IMM,
+                                          AArch64::LD1B_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv8i16 || VT == MVT::nxv8f16 ||
                  VT == MVT::nxv8bf16) {
-        SelectContiguousMultiVectorLoad(Node, 2, 1, AArch64::LD1H_2Z_IMM, AArch64::LD1H_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 2, 1, AArch64::LD1H_2Z_IMM_PSEUDO, AArch64::LD1H_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 1, AArch64::LD1H_2Z_IMM,
+                                          AArch64::LD1H_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv4i32 || VT == MVT::nxv4f32) {
-        SelectContiguousMultiVectorLoad(Node, 2, 2, AArch64::LD1W_2Z_IMM, AArch64::LD1W_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 2, 2, AArch64::LD1W_2Z_IMM_PSEUDO, AArch64::LD1W_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 2, AArch64::LD1W_2Z_IMM,
+                                          AArch64::LD1W_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv2i64 || VT == MVT::nxv2f64) {
-        SelectContiguousMultiVectorLoad(Node, 2, 3, AArch64::LD1D_2Z_IMM, AArch64::LD1D_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 2, 3, AArch64::LD1D_2Z_IMM_PSEUDO, AArch64::LD1D_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 3, AArch64::LD1D_2Z_IMM,
+                                          AArch64::LD1D_2Z);
+        else
+          break;
         return;
       }
       break;
     }
     case Intrinsic::aarch64_sve_ld1_pn_x4: {
       if (VT == MVT::nxv16i8) {
-        SelectContiguousMultiVectorLoad(Node, 4, 0, AArch64::LD1B_4Z_IMM, AArch64::LD1B_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 4, 0, AArch64::LD1B_4Z_IMM_PSEUDO, AArch64::LD1B_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 0, AArch64::LD1B_4Z_IMM,
+                                          AArch64::LD1B_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv8i16 || VT == MVT::nxv8f16 ||
                  VT == MVT::nxv8bf16) {
-        SelectContiguousMultiVectorLoad(Node, 4, 1, AArch64::LD1H_4Z_IMM, AArch64::LD1H_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 4, 1, AArch64::LD1H_4Z_IMM_PSEUDO, AArch64::LD1H_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 1, AArch64::LD1H_4Z_IMM,
+                                          AArch64::LD1H_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv4i32 || VT == MVT::nxv4f32) {
-        SelectContiguousMultiVectorLoad(Node, 4, 2, AArch64::LD1W_4Z_IMM, AArch64::LD1W_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 4, 2, AArch64::LD1W_4Z_IMM_PSEUDO, AArch64::LD1W_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 2, AArch64::LD1W_4Z_IMM,
+                                          AArch64::LD1W_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv2i64 || VT == MVT::nxv2f64) {
-        SelectContiguousMultiVectorLoad(Node, 4, 3, AArch64::LD1D_4Z_IMM, AArch64::LD1D_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(
+              Node, 4, 3, AArch64::LD1D_4Z_IMM_PSEUDO, AArch64::LD1D_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 3, AArch64::LD1D_4Z_IMM,
+                                          AArch64::LD1D_4Z);
+        else
+          break;
         return;
       }
       break;
     }
     case Intrinsic::aarch64_sve_ldnt1_pn_x2: {
       if (VT == MVT::nxv16i8) {
-        SelectContiguousMultiVectorLoad(Node, 2, 0, AArch64::LDNT1B_2Z_IMM, AArch64::LDNT1B_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 2, 0,
+                                          AArch64::LDNT1B_2Z_IMM_PSEUDO,
+                                          AArch64::LDNT1B_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 0, AArch64::LDNT1B_2Z_IMM,
+                                          AArch64::LDNT1B_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv8i16 || VT == MVT::nxv8f16 ||
                  VT == MVT::nxv8bf16) {
-        SelectContiguousMultiVectorLoad(Node, 2, 1, AArch64::LDNT1H_2Z_IMM, AArch64::LDNT1H_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 2, 1,
+                                          AArch64::LDNT1H_2Z_IMM_PSEUDO,
+                                          AArch64::LDNT1H_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 1, AArch64::LDNT1H_2Z_IMM,
+                                          AArch64::LDNT1H_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv4i32 || VT == MVT::nxv4f32) {
-        SelectContiguousMultiVectorLoad(Node, 2, 2, AArch64::LDNT1W_2Z_IMM, AArch64::LDNT1W_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 2, 2,
+                                          AArch64::LDNT1W_2Z_IMM_PSEUDO,
+                                          AArch64::LDNT1W_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 2, AArch64::LDNT1W_2Z_IMM,
+                                          AArch64::LDNT1W_2Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv2i64 || VT == MVT::nxv2f64) {
-        SelectContiguousMultiVectorLoad(Node, 2, 3, AArch64::LDNT1D_2Z_IMM, AArch64::LDNT1D_2Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 2, 3,
+                                          AArch64::LDNT1D_2Z_IMM_PSEUDO,
+                                          AArch64::LDNT1D_2Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 2, 3, AArch64::LDNT1D_2Z_IMM,
+                                          AArch64::LDNT1D_2Z);
+        else
+          break;
         return;
       }
       break;
     }
     case Intrinsic::aarch64_sve_ldnt1_pn_x4: {
       if (VT == MVT::nxv16i8) {
-        SelectContiguousMultiVectorLoad(Node, 4, 0, AArch64::LDNT1B_4Z_IMM, AArch64::LDNT1B_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 4, 0,
+                                          AArch64::LDNT1B_4Z_IMM_PSEUDO,
+                                          AArch64::LDNT1B_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 0, AArch64::LDNT1B_4Z_IMM,
+                                          AArch64::LDNT1B_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv8i16 || VT == MVT::nxv8f16 ||
                  VT == MVT::nxv8bf16) {
-        SelectContiguousMultiVectorLoad(Node, 4, 1, AArch64::LDNT1H_4Z_IMM, AArch64::LDNT1H_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 4, 1,
+                                          AArch64::LDNT1H_4Z_IMM_PSEUDO,
+                                          AArch64::LDNT1H_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 1, AArch64::LDNT1H_4Z_IMM,
+                                          AArch64::LDNT1H_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv4i32 || VT == MVT::nxv4f32) {
-        SelectContiguousMultiVectorLoad(Node, 4, 2, AArch64::LDNT1W_4Z_IMM, AArch64::LDNT1W_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 4, 2,
+                                          AArch64::LDNT1W_4Z_IMM_PSEUDO,
+                                          AArch64::LDNT1W_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 2, AArch64::LDNT1W_4Z_IMM,
+                                          AArch64::LDNT1W_4Z);
+        else
+          break;
         return;
       } else if (VT == MVT::nxv2i64 || VT == MVT::nxv2f64) {
-        SelectContiguousMultiVectorLoad(Node, 4, 3, AArch64::LDNT1D_4Z_IMM, AArch64::LDNT1D_4Z);
+        if (Subtarget->hasSME2())
+          SelectContiguousMultiVectorLoad(Node, 4, 3,
+                                          AArch64::LDNT1D_4Z_IMM_PSEUDO,
+                                          AArch64::LDNT1D_4Z_PSEUDO);
+        else if (Subtarget->hasSVE2p1())
+          SelectContiguousMultiVectorLoad(Node, 4, 3, AArch64::LDNT1D_4Z_IMM,
+                                          AArch64::LDNT1D_4Z);
+        else
+          break;
         return;
       }
       break;

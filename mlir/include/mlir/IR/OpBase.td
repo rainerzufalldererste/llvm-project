@@ -243,6 +243,7 @@ class Property<string storageTypeParam = "", string desc = ""> {
   // Format:
   // - `$_storage` is the storage type value.
   // - `$_writer` is a `DialectBytecodeWriter`.
+  // - `$_ctxt` is a `MLIRContext *`.
   code writeToMlirBytecode = [{
     writeToMlirBytecode($_writer, $_storage)
   }];
@@ -252,6 +253,7 @@ class Property<string storageTypeParam = "", string desc = ""> {
   // Format:
   // - `$_storage` is the storage type value.
   // - `$_reader` is a `DialectBytecodeReader`.
+  // - `$_ctxt` is a `MLIRContext *`.
   code readFromMlirBytecode = [{
     if (::mlir::failed(readFromMlirBytecode($_reader, $_storage)))
       return ::mlir::failure();
@@ -260,6 +262,38 @@ class Property<string storageTypeParam = "", string desc = ""> {
   // Default value for the property.
   string defaultValue = ?;
 }
+
+/// Implementation of the Property class's `readFromMlirBytecode` field using
+/// the default `convertFromAttribute` implementation.
+/// Users not wanting to implement their own `readFromMlirBytecode` and
+/// `writeToMlirBytecode` implementations can opt into using this implementation
+/// by writing:
+///
+/// let writeToMlirBytecode = writeMlirBytecodeWithConvertToAttribute;
+/// let readFromMlirBytecode = readMlirBytecodeUsingConvertFromAttribute;
+///
+/// in their property definition.
+/// Serialization and deserialization is performed using the attributes
+/// returned by `convertFromAttribute` and `convertToAttribute`.
+///
+/// WARNING: This implementation creates a less than optimal encoding.
+/// Users caring about optimal encoding should not use this implementation and
+/// implement `readFromMlirBytecode` and `writeToMlirBytecode` themselves.
+defvar readMlirBytecodeUsingConvertFromAttribute = [{
+  ::mlir::Attribute attr;
+  if (::mlir::failed($_reader.readAttribute(attr)))
+    return ::mlir::failure();
+  if (::mlir::failed(convertFromAttribute($_storage, attr, nullptr)))
+    return ::mlir::failure();
+}];
+
+/// Implementation of the Property class's `writeToMlirBytecode` field using
+/// the default `convertToAttribute` implementation.
+/// See description of `readMlirBytecodeUsingConvertFromAttribute` above for
+/// details.
+defvar writeMlirBytecodeWithConvertToAttribute = [{
+  $_writer.writeAttribute(convertToAttribute($_ctxt, $_storage))
+}];
 
 // Subclass for constraints on an attribute.
 class AttrConstraint<Pred predicate, string summary = ""> :
@@ -1207,6 +1241,7 @@ class ArrayProperty<string storageTypeParam = "", int n, string desc = ""> :
   let interfaceType = "::llvm::ArrayRef<" # storageTypeParam # ">";
   let convertFromStorage = "$_storage";
   let assignToStorage = "::llvm::copy($_value, $_storage)";
+  let hashProperty = "llvm::hash_combine_range(std::begin($_storage), std::end($_storage));";
 }
 
 //===----------------------------------------------------------------------===//
@@ -2143,7 +2178,7 @@ def SameVariadicOperandSize : GenInternalOpTrait<"SameVariadicOperandSize">;
 // to have the same array size.
 def SameVariadicResultSize : GenInternalOpTrait<"SameVariadicResultSize">;
 
-// Uses an attribute named `operand_segment_sizes` to specify how many actual
+// Uses an attribute named `operandSegmentSizes` to specify how many actual
 // operand each ODS-declared operand (variadic or not) corresponds to.
 // This trait is used for ops that have multiple variadic operands but do
 // not know statically their size relationship. The attribute must be a 1D
@@ -2153,7 +2188,7 @@ def SameVariadicResultSize : GenInternalOpTrait<"SameVariadicResultSize">;
 def AttrSizedOperandSegments :
   NativeOpTrait<"AttrSizedOperandSegments">, StructuralOpTrait;
 // Similar to AttrSizedOperandSegments, but used for results. The attribute
-// should be named as `result_segment_sizes`.
+// should be named as `resultSegmentSizes`.
 def AttrSizedResultSegments  :
   NativeOpTrait<"AttrSizedResultSegments">, StructuralOpTrait;
 
@@ -2540,6 +2575,10 @@ class Op<Dialect dialect, string mnemonic, list<Trait> props = []> {
 
   // Whether this op has a folder.
   bit hasFolder = 0;
+
+  // Whether to let ops implement their custom `readProperties` and
+  // `writeProperties` methods to emit bytecode.
+  bit useCustomPropertiesEncoding = 0;
 
   // Op traits.
   // Note: The list of traits will be uniqued by ODS.

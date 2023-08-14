@@ -975,8 +975,8 @@ static StringRef sanitizeIdentifier(StringRef name, SmallString<16> &buffer,
 void AliasInitializer::initializeAliases(
     llvm::MapVector<const void *, InProgressAliasInfo> &visitedSymbols,
     llvm::MapVector<const void *, SymbolAlias> &symbolToAlias) {
-  std::vector<std::pair<const void *, InProgressAliasInfo>> unprocessedAliases =
-      visitedSymbols.takeVector();
+  SmallVector<std::pair<const void *, InProgressAliasInfo>, 0>
+      unprocessedAliases = visitedSymbols.takeVector();
   llvm::stable_sort(unprocessedAliases, [](const auto &lhs, const auto &rhs) {
     return lhs.second < rhs.second;
   });
@@ -3197,7 +3197,7 @@ void OperationPrinter::printResourceFileMetadata(
     ResourceBuilder entryBuilder(*this, printFn);
     provider.buildResources(op, providerArgs..., entryBuilder);
 
-    needEntryComma = hadEntry;
+    needEntryComma |= hadEntry;
     if (hadEntry)
       os << newLine << "    }";
   };

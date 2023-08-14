@@ -61,10 +61,10 @@ static Value getOffsetForBitwidth(Location loc, Value srcIdx, int sourceBits,
 /// 1D array (spirv.array or spirv.rt_array), the last index is modified to load
 /// the bits needed. The extraction of the actual bits needed are handled
 /// separately. Note that this only works for a 1-D tensor.
-static Value adjustAccessChainForBitwidth(SPIRVTypeConverter &typeConverter,
-                                          spirv::AccessChainOp op,
-                                          int sourceBits, int targetBits,
-                                          OpBuilder &builder) {
+static Value
+adjustAccessChainForBitwidth(const SPIRVTypeConverter &typeConverter,
+                             spirv::AccessChainOp op, int sourceBits,
+                             int targetBits, OpBuilder &builder) {
   assert(targetBits % sourceBits == 0);
   const auto loc = op.getLoc();
   IntegerType targetType = builder.getIntegerType(targetBits);
@@ -267,6 +267,28 @@ public:
                   ConversionPatternRewriter &rewriter) const override;
 };
 
+class CastPattern final : public OpConversionPattern<memref::CastOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(memref::CastOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Value src = adaptor.getSource();
+    Type srcType = src.getType();
+
+    const TypeConverter *converter = getTypeConverter();
+    Type dstType = converter->convertType(op.getType());
+    if (srcType != dstType)
+      return rewriter.notifyMatchFailure(op, [&](Diagnostic &diag) {
+        diag << "types doesn't match: " << srcType << " and " << dstType;
+      });
+
+    rewriter.replaceOp(op, src);
+    return success();
+  }
+};
+
 } // namespace
 
 //===----------------------------------------------------------------------===//
@@ -282,6 +304,9 @@ AllocaOpPattern::matchAndRewrite(memref::AllocaOp allocaOp, OpAdaptor adaptor,
 
   // Get the SPIR-V type for the allocation.
   Type spirvType = getTypeConverter()->convertType(allocType);
+  if (!spirvType)
+    return rewriter.notifyMatchFailure(allocaOp, "type conversion failed");
+
   rewriter.replaceOpWithNewOp<spirv::VariableOp>(allocaOp, spirvType,
                                                  spirv::StorageClass::Function,
                                                  /*initializer=*/nullptr);
@@ -301,6 +326,8 @@ AllocOpPattern::matchAndRewrite(memref::AllocOp operation, OpAdaptor adaptor,
 
   // Get the SPIR-V type for the allocation.
   Type spirvType = getTypeConverter()->convertType(allocType);
+  if (!spirvType)
+    return rewriter.notifyMatchFailure(operation, "type conversion failed");
 
   // Insert spirv.GlobalVariable for this allocation.
   Operation *parent =
@@ -409,7 +436,7 @@ IntLoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
   if (!memrefType.getElementType().isSignlessInteger())
     return failure();
 
-  auto &typeConverter = *getTypeConverter<SPIRVTypeConverter>();
+  const auto &typeConverter = *getTypeConverter<SPIRVTypeConverter>();
   Value accessChain =
       spirv::getElementPtr(typeConverter, memrefType, adaptor.getMemref(),
                            adaptor.getIndices(), loc, rewriter);
@@ -445,7 +472,7 @@ IntLoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
   int dstBits = dstType.getIntOrFloatBitWidth();
   assert(dstBits % srcBits == 0);
 
-  // If the rewrited load op has the same bit width, use the loading value
+  // If the rewritten load op has the same bit width, use the loading value
   // directly.
   if (srcBits == dstBits) {
     Value loadVal = rewriter.create<spirv::LoadOp>(loc, accessChain);
@@ -679,12 +706,16 @@ LogicalResult MemorySpaceCastOpPattern::matchAndRewrite(
 
   Value result = adaptor.getSource();
   Type resultPtrType = typeConverter.convertType(resultType);
+  if (!resultPtrType)
+    return rewriter.notifyMatchFailure(addrCastOp,
+                                       "failed to convert memref type");
+
   Type genericPtrType = resultPtrType;
   // SPIR-V doesn't have a general address space cast operation. Instead, it has
   // conversions to and from generic pointers. To implement the general case,
   // we use specific-to-generic conversions when the source class is not
   // generic. Then when the result storage class is not generic, we convert the
-  // generic pointer (either the input on ar intermediate result) to theat
+  // generic pointer (either the input on ar intermediate result) to that
   // class. This also means that we'll need the intermediate generic pointer
   // type if neither the source or destination have it.
   if (sourceSc != spirv::StorageClass::Generic &&
@@ -737,7 +768,7 @@ LogicalResult ReinterpretCastPattern::matchAndRewrite(
       diag << "invalid src type " << src.getType();
     });
 
-  TypeConverter *converter = getTypeConverter();
+  const TypeConverter *converter = getTypeConverter();
 
   auto dstType = converter->convertType<spirv::PointerType>(op.getType());
   if (dstType != srcType)
@@ -779,10 +810,10 @@ LogicalResult ReinterpretCastPattern::matchAndRewrite(
 namespace mlir {
 void populateMemRefToSPIRVPatterns(SPIRVTypeConverter &typeConverter,
                                    RewritePatternSet &patterns) {
-  patterns
-      .add<AllocaOpPattern, AllocOpPattern, AtomicRMWOpPattern,
-           DeallocOpPattern, IntLoadOpPattern, IntStoreOpPattern, LoadOpPattern,
-           MemorySpaceCastOpPattern, StoreOpPattern, ReinterpretCastPattern>(
-          typeConverter, patterns.getContext());
+  patterns.add<AllocaOpPattern, AllocOpPattern, AtomicRMWOpPattern,
+               DeallocOpPattern, IntLoadOpPattern, IntStoreOpPattern,
+               LoadOpPattern, MemorySpaceCastOpPattern, StoreOpPattern,
+               ReinterpretCastPattern, CastPattern>(typeConverter,
+                                                    patterns.getContext());
 }
 } // namespace mlir

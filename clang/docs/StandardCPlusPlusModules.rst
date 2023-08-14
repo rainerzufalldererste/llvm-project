@@ -688,6 +688,14 @@ Currently, clang requires the file name of an ``importable module unit`` should 
 
 This is tracked in: https://github.com/llvm/llvm-project/issues/57416
 
+clang-cl is not compatible with the standard C++ modules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Now we can't use the `/clang:-fmodule-file` or `/clang:-fprebuilt-module-path` to specify
+the BMI within ``clang-cl.exe``.
+
+This is tracked in: https://github.com/llvm/llvm-project/issues/64118
+
 Header Units
 ============
 
@@ -1064,12 +1072,6 @@ the user can choose to get the dependency information per file. For example:
 
   $ clang-scan-deps -format=p1689 -- <path-to-compiler-executable>/clang++ -std=c++20 impl_part.cppm -c -o impl_part.o
 
-.. warning::
-
-   The ``<path-to-compiler-executable>/clang++`` should point to the real
-   binary and not to a symlink. If it points to a symlink the include paths
-   will not be correctly resolved.
-
 And we'll get:
 
 .. code-block:: text
@@ -1125,6 +1127,32 @@ We will get:
 
 When clang-scan-deps detects ``-MF`` option, clang-scan-deps will try to write the
 dependency information for headers to the file specified by ``-MF``.
+
+Possible Issues: Failed to find system headers
+----------------------------------------------
+
+In case the users encounter errors like ``fatal error: 'stddef.h' file not found``,
+probably the specified ``<path-to-compiler-executable>/clang++`` refers to a symlink
+instead a real binary. There are 4 potential solutions to the problem:
+
+* (1) End users can resolve the issue by pointing the specified compiler executable to
+  the real binary instead of the symlink.
+* (2) End users can invoke ``<path-to-compiler-executable>/clang++ -print-resource-dir``
+  to get the corresponding resource directory for your compiler and add that directory
+  to the include search paths manually in the build scripts.
+* (3) Build systems that use a compilation database as the input for clang-scan-deps
+  scanner, the build system can add the flag ``--resource-dir-recipe invoke-compiler`` to
+  the clang-scan-deps scanner to calculate the resources directory dynamically.
+  The calculation happens only once for a unique ``<path-to-compiler-executable>/clang++``.
+* (4) For build systems that invokes the clang-scan-deps scanner per file, repeatedly
+  calculating the resource directory may be inefficient. In such cases, the build
+  system can cache the resource directory by itself and pass ``-resource-dir <resource-dir>``
+  explicitly in the command line options:
+
+.. code-block:: console
+
+  $ clang-scan-deps -format=p1689 -- <path-to-compiler-executable>/clang++ -std=c++20 -resource-dir <resource-dir> mod.cppm -c -o mod.o
+
 
 Possible Questions
 ==================

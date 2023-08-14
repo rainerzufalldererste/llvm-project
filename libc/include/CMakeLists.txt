@@ -67,6 +67,15 @@ add_gen_header(
 )
 
 add_gen_header(
+  limits
+  DEF_FILE limits.h.def
+  GEN_HDR limits.h
+  DEPENDS
+    .llvm_libc_common_h
+    .llvm-libc-macros.limits_macros
+)
+
+add_gen_header(
   math
   DEF_FILE math.h.def
   GEN_HDR math.h
@@ -467,6 +476,7 @@ add_gen_header(
     .llvm-libc-macros.sys_wait_macros
     .llvm-libc-types.pid_t
     .llvm-libc-types.struct_rusage
+    .llvm-libc-types.siginfo_t
 )
 
 add_gen_header(

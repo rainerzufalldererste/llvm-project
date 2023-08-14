@@ -12,7 +12,6 @@
 #include "AMDKernelCodeT.h"
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "llvm/BinaryFormat/ELF.h"
-#include "llvm/CodeGen/TargetRegisterInfo.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -2001,6 +2000,10 @@ bool hasPackedD16(const MCSubtargetInfo &STI) {
          !isSI(STI);
 }
 
+bool hasGDS(const MCSubtargetInfo &STI) {
+  return STI.hasFeature(AMDGPU::FeatureGDS);
+}
+
 unsigned getNSAMaxSize(const MCSubtargetInfo &STI) {
   auto Version = getIsaVersion(STI.getCPU());
   if (Version.Major == 10)
@@ -2420,10 +2423,6 @@ unsigned getRegBitWidth(unsigned RCID) {
 }
 
 unsigned getRegBitWidth(const MCRegisterClass &RC) {
-  return getRegBitWidth(RC.getID());
-}
-
-unsigned getRegBitWidth(const TargetRegisterClass &RC) {
   return getRegBitWidth(RC.getID());
 }
 

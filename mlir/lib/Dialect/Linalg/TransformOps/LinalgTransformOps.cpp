@@ -12,6 +12,7 @@
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
@@ -261,6 +262,7 @@ DiagnosedSilenceableFailure transform::BufferizeToAllocationOp::apply(
   } else {
     llvm_unreachable("invalid alloc op");
   }
+  options.bufferizeDestinationOnly = getBufferizeDestinationOnly();
 
   // Bufferize ops.
   Attribute memorySpace =
@@ -919,8 +921,10 @@ transform::FuseIntoContainingOp::apply(transform::TransformRewriter &rewriter,
   while (!remainingProducers.empty()) {
     auto nextProducer = getNextProducer();
     if (failed(nextProducer)) {
-      return mlir::emitSilenceableFailure(containingOp->getLoc())
+      auto diag = mlir::emitSilenceableFailure(getLoc())
              << "could not find next producer to fuse into container";
+      diag.attachNote(containingOp->getLoc()) << "containing op";
+      return diag;
     }
 
     Operation *producerOp = *nextProducer;
@@ -1588,7 +1592,7 @@ void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                              ArrayRef<int64_t> padToMultipleOf,
                              ArrayRef<int64_t> packPaddings,
                              ArrayRef<Attribute> transposePaddings,
-                             bool copyBack) {
+                             StringRef copyBackOp) {
   auto resultType = transform::AnyOpType::get(b.getContext());
   return build(/*builder=*/b,
                /*result=*/result,
@@ -1601,7 +1605,7 @@ void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                                         : b.getI64ArrayAttr(padToMultipleOf)),
                /*packPaddings=*/b.getI64ArrayAttr(packPaddings),
                /*transposePaddings=*/b.getArrayAttr(transposePaddings),
-               /*copyBack=*/b.getBoolAttr(copyBack));
+               /*copyBackOp=*/b.getStringAttr(copyBackOp));
 }
 
 DiagnosedSilenceableFailure
@@ -1675,11 +1679,21 @@ transform::PadOp::apply(transform::TransformRewriter &rewriter,
     options.padToMultipleOf = padToMultipleOf;
     options.paddingValues = paddingValues;
     options.packPaddings = packPaddings;
+    if (getCopyBackOp() == bufferization::CopyTensorOp::getOperationName()) {
+      options.copyBackOp =
+          LinalgPaddingOptions::CopyBackOp::BufferizationCopyTensor;
+    } else if (getCopyBackOp() == linalg::CopyOp::getOperationName()) {
+      options.copyBackOp = LinalgPaddingOptions::CopyBackOp::LinalgCopy;
+    } else if (getCopyBackOp() == kCopyOpNone) {
+      options.copyBackOp = LinalgPaddingOptions::CopyBackOp::None;
+    } else {
+      llvm_unreachable("unsupported copy_back op");
+    }
 
     SmallVector<Value> replacements;
     SmallVector<tensor::PadOp> newPadOps;
     if (failed(rewriteAsPaddedOp(rewriter, linalgTarget, options, paddedOp,
-                                 replacements, newPadOps, getCopyBack()))) {
+                                 replacements, newPadOps))) {
       auto diag = emitSilenceableError() << "failed to pad op";
       diag.attachNote(target->getLoc()) << "target op";
       return diag;
@@ -1735,6 +1749,10 @@ LogicalResult transform::PadOp::verify() {
              << attr;
     }
   }
+  if (getCopyBackOp() != bufferization::CopyTensorOp::getOperationName() &&
+      getCopyBackOp() != linalg::CopyOp::getOperationName() &&
+      getCopyBackOp() != kCopyOpNone)
+    return emitOpError() << "invalid copy_back_op";
   return success();
 }
 
@@ -3375,21 +3393,26 @@ DiagnosedSilenceableFailure transform::InsertSliceToCopyOp::applyToOne(
 //===----------------------------------------------------------------------===//
 // MapCopyToThreadsOp
 //===----------------------------------------------------------------------===//
+
 DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
-    transform::TransformRewriter &rewriter, linalg::CopyOp copyOp,
+    transform::TransformRewriter &rewriter, Operation *target,
     transform::ApplyToEachResultList &results,
     transform::TransformState &state) {
-  auto transformOp = cast<TransformOpInterface>(getOperation());
-  ShapedType resultShapedType;
-  if (copyOp) {
-    resultShapedType =
-        cast<ShapedType>(copyOp.getDpsInitOperand(0)->get().getType());
-  }
-  if (!copyOp || !resultShapedType.hasStaticShape()) {
+  // Check if the op is supported.
+  if (!isa<linalg::CopyOp, tensor::PadOp>(target)) {
     DiagnosedSilenceableFailure diag =
-        transformOp.emitSilenceableError()
-        << "only statically sized linalg.copy ops of rank <= 3 are supported";
-    diag.attachNote(copyOp->getLoc()) << "target op";
+        emitSilenceableError()
+        << "only linalg.copy and tensor.pad target ops are supported";
+    diag.attachNote(target->getLoc()) << "target op";
+    return diag;
+  }
+  assert(target->getNumResults() == 1 && "expected single result");
+  auto resultShapedType = cast<ShapedType>(target->getResult(0).getType());
+  if (!resultShapedType.hasStaticShape()) {
+    DiagnosedSilenceableFailure diag =
+        emitSilenceableError()
+        << "only statically sized ops of rank <= 3 are supported";
+    diag.attachNote(target->getLoc()) << "target op";
     return diag;
   }
 
@@ -3411,11 +3434,11 @@ DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
       resultShapedType.getElementType().getIntOrFloatBitWidth());
   if (mapping.status == gpu::CopyMappingInfo::Status::Invalid) {
     DiagnosedSilenceableFailure diag =
-        transformOp.emitSilenceableError()
+        emitSilenceableError()
         << "too few threads to map copy op to threads on the most minor "
            "dimension, given alignment and vector size constraints, try "
            "smaller tile size of mapping to more threads";
-    diag.attachNote(copyOp->getLoc()) << "target op";
+    diag.attachNote(target->getLoc()) << "target op";
     return diag;
   }
 
@@ -3425,8 +3448,8 @@ DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
   DiagnosedSilenceableFailure diag = tileToForallOpImpl(
       /*rewriter=*/rewriter,
       /*state=*/state,
-      /*transformOp=*/transformOp,
-      /*target=*/copyOp,
+      /*transformOp=*/*this,
+      /*target=*/target,
       /*mixedNumThreads=*/getMixedValues(mapping.numThreads, {}, b),
       /*mixedTileSizes=*/ArrayRef<OpFoldResult>{},
       /*mapping=*/b.getArrayAttr(mapping.threadMapping),
@@ -3434,6 +3457,7 @@ DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
   if (!diag.succeeded())
     return diag;
 
+  results.push_back(tilingResult.tileOp);
   results.push_back(tilingResult.tiledOp);
   return DiagnosedSilenceableFailure::success();
 }

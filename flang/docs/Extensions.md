@@ -291,6 +291,13 @@ end
   numeric character literal kind prefix on the file name.
 * Intrinsic procedures TAND and ATAND. Constant folding is currently
   not supported for these procedures but this is planned.
+* When a pair of quotation marks in a character literal are split
+  by a line continuation in free form, the second quotation mark
+  may appear at the beginning of the continuation line without an
+  ampersand, althought one is required by the standard.
+* Unrestricted `INTRINSIC` functions are accepted for use in
+  `PROCEDURE` statements in generic interfaces, as in some other
+  compilers.
 
 ### Extensions supported when enabled by options
 
@@ -607,3 +614,4 @@ end module
 * `ENCODING=` is not in the list of changeable modes on an I/O unit,
   but every Fortran compiler allows the encoding to be changed on an
   open unit.
+

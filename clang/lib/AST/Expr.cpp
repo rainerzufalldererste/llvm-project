@@ -3312,6 +3312,10 @@ bool Expr::isConstantInitializer(ASTContext &Ctx, bool IsForRef,
   // kill the second parameter.
 
   if (IsForRef) {
+    if (auto *EWC = dyn_cast<ExprWithCleanups>(this))
+      return EWC->getSubExpr()->isConstantInitializer(Ctx, true, Culprit);
+    if (auto *MTE = dyn_cast<MaterializeTemporaryExpr>(this))
+      return MTE->getSubExpr()->isConstantInitializer(Ctx, false, Culprit);
     EvalResult Result;
     if (EvaluateAsLValue(Result, Ctx) && !Result.HasSideEffects)
       return true;
@@ -3978,7 +3982,7 @@ Expr::isNullPointerConstant(ASTContext &Ctx,
   if (getType().isNull())
     return NPCK_NotNull;
 
-  // C++11/C2x nullptr_t is always a null pointer constant.
+  // C++11/C23 nullptr_t is always a null pointer constant.
   if (getType()->isNullPtrType())
     return NPCK_CXX11_nullptr;
 

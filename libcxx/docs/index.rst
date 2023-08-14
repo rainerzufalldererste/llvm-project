@@ -35,12 +35,13 @@ Getting Started with libc++
    :maxdepth: 1
 
    ReleaseNotes/17
+   ReleaseNotes/18
    UsingLibcxx
    BuildingLibcxx
    TestingLibcxx
    Contributing
    Modules
-   HardenedMode
+   Hardening
    ReleaseProcedure
    Status/Cxx14
    Status/Cxx17

@@ -104,13 +104,13 @@ def Action_Group : OptionGroup<"<action group>">, DocName<"Actions">,
 // Meta-group for options which are only used for compilation,
 // and not linking etc.
 def CompileOnly_Group : OptionGroup<"<CompileOnly group>">,
-                        DocName<"Compilation flags">, DocBrief<[{
+                        DocName<"Compilation options">, DocBrief<[{
 Flags controlling the behavior of Clang during compilation. These flags have
 no effect during actions that do not perform compilation.}]>;
 
 def Preprocessor_Group : OptionGroup<"<Preprocessor group>">,
                          Group<CompileOnly_Group>,
-                         DocName<"Preprocessor flags">, DocBrief<[{
+                         DocName<"Preprocessor options">, DocBrief<[{
 Flags controlling the behavior of the Clang preprocessor.}]>;
 
 def IncludePath_Group : OptionGroup<"<I/i group>">, Group<Preprocessor_Group>,
@@ -132,7 +132,7 @@ def d_Group : OptionGroup<"<d group>">, Group<Preprocessor_Group>,
 Flags allowing the state of the preprocessor to be dumped in various ways.}]>;
 
 def Diag_Group : OptionGroup<"<W/R group>">, Group<CompileOnly_Group>,
-                 DocName<"Diagnostic flags">, DocBrief<[{
+                 DocName<"Diagnostic options">, DocBrief<[{
 Flags controlling which warnings, errors, and remarks Clang will generate.
 See the :doc:`full list of warning and remark flags <DiagnosticsReference>`.}]>;
 
@@ -150,11 +150,21 @@ def f_clang_Group : OptionGroup<"<f (clang-only) group>">,
                     Group<CompileOnly_Group>, DocFlatten;
 def pedantic_Group : OptionGroup<"<pedantic group>">, Group<f_Group>,
                      DocFlatten;
+
+def offload_Group : OptionGroup<"<offload group>">, Group<f_Group>,
+                   DocName<"Common Offloading options">;
+
 def opencl_Group : OptionGroup<"<opencl group>">, Group<f_Group>,
-                   DocName<"OpenCL flags">;
+                   DocName<"OpenCL options">;
 
 def sycl_Group : OptionGroup<"<SYCL group>">, Group<f_Group>,
-                 DocName<"SYCL flags">;
+                 DocName<"SYCL options">;
+
+def cuda_Group : OptionGroup<"<CUDA group>">, Group<f_Group>,
+                   DocName<"CUDA options">;
+
+def hip_Group : OptionGroup<"<HIP group>">, Group<f_Group>,
+                   DocName<"HIP options">;
 
 def m_Group : OptionGroup<"<m group>">, Group<CompileOnly_Group>,
               DocName<"Target-dependent compilation options">;
@@ -213,20 +223,20 @@ def ggdbN_Group : OptionGroup<"<ggdbN group>">, Group<gN_Group>, DocFlatten;
 def gTune_Group : OptionGroup<"<gTune group>">, Group<g_Group>,
                   DocName<"Debugger to tune debug information for">;
 def g_flags_Group : OptionGroup<"<g flags group>">, Group<DebugInfo_Group>,
-                    DocName<"Debug information flags">;
+                    DocName<"Debug information options">;
 
 def StaticAnalyzer_Group : OptionGroup<"<Static analyzer group>">,
-                           DocName<"Static analyzer flags">, DocBrief<[{
+                           DocName<"Static analyzer options">, DocBrief<[{
 Flags controlling the behavior of the Clang Static Analyzer.}]>;
 
 // gfortran options that we recognize in the driver and pass along when
 // invoking GCC to compile Fortran code.
 def gfortran_Group : OptionGroup<"<gfortran group>">,
-                     DocName<"Fortran compilation flags">, DocBrief<[{
+                     DocName<"Fortran compilation options">, DocBrief<[{
 Flags that will be passed onto the ``gfortran`` compiler when Clang is given
 a Fortran input.}]>;
 
-def Link_Group : OptionGroup<"<T/e/s/t/u group>">, DocName<"Linker flags">,
+def Link_Group : OptionGroup<"<T/e/s/t/u group>">, DocName<"Linker options">,
                  DocBrief<[{Flags that are passed on to the linker}]>;
 def T_Group : OptionGroup<"<T group>">, Group<Link_Group>, DocFlatten;
 def u_Group : OptionGroup<"<u group>">, Group<Link_Group>, DocFlatten;
@@ -252,7 +262,7 @@ def clang_ignored_legacy_options_Group : OptionGroup<"<clang legacy flags>">,
   Group<f_Group>, Flags<[Ignored]>;
 
 def LongDouble_Group : OptionGroup<"<LongDouble group>">, Group<m_Group>,
-  DocName<"Long double flags">,
+  DocName<"Long double options">,
   DocBrief<[{Selects the long double implementation}]>;
 
 // Retired with clang-5.0
@@ -543,7 +553,7 @@ defvar cpp11 = LangOpts<"CPlusPlus11">;
 defvar cpp17 = LangOpts<"CPlusPlus17">;
 defvar cpp20 = LangOpts<"CPlusPlus20">;
 defvar c99 = LangOpts<"C99">;
-defvar c2x = LangOpts<"C2x">;
+defvar c23 = LangOpts<"C23">;
 defvar lang_std = LangOpts<"LangStd">;
 defvar open_cl = LangOpts<"OpenCL">;
 defvar cuda = LangOpts<"CUDA">;
@@ -806,19 +816,6 @@ def : Flag<["-"], "fno-ident">, Group<f_Group>, Alias<Qn>,
 def Qunused_arguments : Flag<["-"], "Qunused-arguments">, Flags<[NoXarchOption, CoreOption]>,
   HelpText<"Don't emit warning for unused driver arguments">;
 def Q : Flag<["-"], "Q">, IgnoredGCCCompat;
-def Rpass_EQ : Joined<["-"], "Rpass=">, Group<R_value_Group>, Flags<[CC1Option]>,
-  HelpText<"Report transformations performed by optimization passes whose "
-           "name matches the given POSIX regular expression">;
-def Rpass_missed_EQ : Joined<["-"], "Rpass-missed=">, Group<R_value_Group>,
-  Flags<[CC1Option]>,
-  HelpText<"Report missed transformations by optimization passes whose "
-           "name matches the given POSIX regular expression">;
-def Rpass_analysis_EQ : Joined<["-"], "Rpass-analysis=">, Group<R_value_Group>,
-  Flags<[CC1Option]>,
-  HelpText<"Report transformation analysis from optimization passes whose "
-           "name matches the given POSIX regular expression">;
-def R_Joined : Joined<["-"], "R">, Group<R_Group>, Flags<[CC1Option, CoreOption]>,
-  MetaVarName<"<remark>">, HelpText<"Enable the specified remark">;
 def S : Flag<["-"], "S">, Flags<[NoXarchOption,CC1Option,FlangOption,FC1Option]>, Group<Action_Group>,
   HelpText<"Only run preprocess and compilation steps">;
 def T : JoinedOrSeparate<["-"], "T">, Group<T_Group>,
@@ -833,6 +830,10 @@ def Wall : Flag<["-"], "Wall">, Group<W_Group>, Flags<[CC1Option, HelpHidden]>;
 def WCL4 : Flag<["-"], "WCL4">, Group<W_Group>, Flags<[CC1Option, HelpHidden]>;
 def Wsystem_headers : Flag<["-"], "Wsystem-headers">, Group<W_Group>, Flags<[CC1Option, HelpHidden]>;
 def Wno_system_headers : Flag<["-"], "Wno-system-headers">, Group<W_Group>, Flags<[CC1Option, HelpHidden]>;
+def Wsystem_headers_in_module_EQ : Joined<["-"], "Wsystem-headers-in-module=">,
+  Flags<[CC1Option, HelpHidden]>, MetaVarName<"<module>">,
+  HelpText<"Enable -Wsystem-headers when building <module>">,
+  MarshallingInfoStringVector<DiagnosticOpts<"SystemHeaderWarningsModules">>;
 def Wdeprecated : Flag<["-"], "Wdeprecated">, Group<W_Group>, Flags<[CC1Option]>,
   HelpText<"Enable warnings for deprecated constructs and define __DEPRECATED">;
 def Wno_deprecated : Flag<["-"], "Wno-deprecated">, Group<W_Group>, Flags<[CC1Option]>;
@@ -912,6 +913,12 @@ def bundle : Flag<["-"], "bundle">;
 def b : JoinedOrSeparate<["-"], "b">, Flags<[LinkerInput]>,
   HelpText<"Pass -b <arg> to the linker on AIX">, MetaVarName<"<arg>">,
   Group<Link_Group>;
+
+defm offload_uniform_block : BoolFOption<"offload-uniform-block",
+  LangOpts<"OffloadUniformBlock">, Default<"LangOpts->CUDA">,
+  PosFlag<SetTrue, [CC1Option], "Assume">, NegFlag<SetFalse, [CC1Option], "Don't assume">,
+  BothFlags<[], " that kernels are launched with uniform block sizes (default true for CUDA/HIP and false otherwise)">>;
+
 // OpenCL-only Options
 def cl_opt_disable : Flag<["-"], "cl-opt-disable">, Group<opencl_Group>, Flags<[CC1Option]>,
   HelpText<"OpenCL only. This option disables all optimizations. By default optimizations are enabled.">;
@@ -947,9 +954,8 @@ def cl_denorms_are_zero : Flag<["-"], "cl-denorms-are-zero">, Group<opencl_Group
 def cl_fp32_correctly_rounded_divide_sqrt : Flag<["-"], "cl-fp32-correctly-rounded-divide-sqrt">, Group<opencl_Group>, Flags<[CC1Option]>,
   HelpText<"OpenCL only. Specify that single precision floating-point divide and sqrt used in the program source are correctly rounded.">,
   MarshallingInfoFlag<CodeGenOpts<"OpenCLCorrectlyRoundedDivSqrt">>;
-def cl_uniform_work_group_size : Flag<["-"], "cl-uniform-work-group-size">, Group<opencl_Group>, Flags<[CC1Option]>,
-  HelpText<"OpenCL only. Defines that the global work-size be a multiple of the work-group size specified to clEnqueueNDRangeKernel">,
-  MarshallingInfoFlag<CodeGenOpts<"UniformWGSize">>;
+def cl_uniform_work_group_size : Flag<["-"], "cl-uniform-work-group-size">, Group<opencl_Group>, Flags<[CC1Option]>, Alias<foffload_uniform_block>,
+  HelpText<"OpenCL only. Defines that the global work-size be a multiple of the work-group size specified to clEnqueueNDRangeKernel">;
 def cl_no_stdinc : Flag<["-"], "cl-no-stdinc">, Group<opencl_Group>,
   HelpText<"OpenCL only. Disables all standard includes containing non-native compiler types and functions.">;
 def cl_ext_EQ : CommaJoined<["-"], "cl-ext=">, Group<opencl_Group>, Flags<[CC1Option]>,
@@ -982,32 +988,108 @@ defm convergent_functions : BoolFOption<"convergent-functions",
   NegFlag<SetFalse, [], "Assume all functions may be convergent.">,
   PosFlag<SetTrue, [CC1Option]>>;
 
-def gpu_use_aux_triple_only : Flag<["--"], "gpu-use-aux-triple-only">,
-  InternalDriverOpt, HelpText<"Prepare '-aux-triple' only without populating "
-                              "'-aux-target-cpu' and '-aux-target-feature'.">;
-def cuda_include_ptx_EQ : Joined<["--"], "cuda-include-ptx=">, Flags<[NoXarchOption]>,
-  HelpText<"Include PTX for the following GPU architecture (e.g. sm_35) or 'all'. May be specified more than once.">;
-def no_cuda_include_ptx_EQ : Joined<["--"], "no-cuda-include-ptx=">, Flags<[NoXarchOption]>,
-  HelpText<"Do not include PTX for the following GPU architecture (e.g. sm_35) or 'all'. May be specified more than once.">;
+// Common offloading options
+let Group = offload_Group in {
 def offload_arch_EQ : Joined<["--"], "offload-arch=">, Flags<[NoXarchOption]>,
   HelpText<"Specify an offloading device architecture for CUDA, HIP, or OpenMP. (e.g. sm_35). "
            "If 'native' is used the compiler will detect locally installed architectures. "
            "For HIP offloading, the device architecture can be followed by target ID features "
            "delimited by a colon (e.g. gfx908:xnack+:sramecc-). May be specified more than once.">;
-def cuda_gpu_arch_EQ : Joined<["--"], "cuda-gpu-arch=">, Flags<[NoXarchOption]>,
-  Alias<offload_arch_EQ>;
-def cuda_feature_EQ : Joined<["--"], "cuda-feature=">, HelpText<"Manually specify the CUDA feature to use">;
-def hip_link : Flag<["--"], "hip-link">,
-  HelpText<"Link clang-offload-bundler bundles for HIP">;
-def no_hip_rt: Flag<["-"], "no-hip-rt">,
-  HelpText<"Do not link against HIP runtime libraries">;
 def no_offload_arch_EQ : Joined<["--"], "no-offload-arch=">, Flags<[NoXarchOption]>,
   HelpText<"Remove CUDA/HIP offloading device architecture (e.g. sm_35, gfx906) from the list of devices to compile for. "
            "'all' resets the list to its default value.">;
-def emit_static_lib : Flag<["--"], "emit-static-lib">,
-  HelpText<"Enable linker job to emit a static library.">;
+
+def offload_new_driver : Flag<["--"], "offload-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
+  MarshallingInfoFlag<LangOpts<"OffloadingNewDriver">>, HelpText<"Use the new driver for offloading compilation.">;
+def no_offload_new_driver : Flag<["--"], "no-offload-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
+  HelpText<"Don't Use the new driver for offloading compilation.">;
+
+def offload_device_only : Flag<["--"], "offload-device-only">, Flags<[FlangOption]>,
+  HelpText<"Only compile for the offloading device.">;
+def offload_host_only : Flag<["--"], "offload-host-only">, Flags<[FlangOption]>,
+  HelpText<"Only compile for the offloading host.">;
+def offload_host_device : Flag<["--"], "offload-host-device">, Flags<[FlangOption]>,
+  HelpText<"Compile for both the offloading host and device (default).">;
+
+def gpu_use_aux_triple_only : Flag<["--"], "gpu-use-aux-triple-only">,
+  InternalDriverOpt, HelpText<"Prepare '-aux-triple' only without populating "
+                              "'-aux-target-cpu' and '-aux-target-feature'.">;
+def amdgpu_arch_tool_EQ : Joined<["--"], "amdgpu-arch-tool=">,
+  HelpText<"Tool used for detecting AMD GPU arch in the system.">;
+def nvptx_arch_tool_EQ : Joined<["--"], "nvptx-arch-tool=">,
+  HelpText<"Tool used for detecting NVIDIA GPU arch in the system.">;
+
+defm gpu_rdc : BoolFOption<"gpu-rdc",
+  LangOpts<"GPURelocatableDeviceCode">, DefaultFalse,
+  PosFlag<SetTrue, [CC1Option], "Generate relocatable device code, also known as separate compilation mode">,
+  NegFlag<SetFalse>>;
+
+def fgpu_default_stream_EQ : Joined<["-"], "fgpu-default-stream=">,
+  HelpText<"Specify default stream. The default value is 'legacy'. (CUDA/HIP only)">,
+  Flags<[CC1Option]>,
+  Values<"legacy,per-thread">,
+  NormalizedValuesScope<"LangOptions::GPUDefaultStreamKind">,
+  NormalizedValues<["Legacy", "PerThread"]>,
+  MarshallingInfoEnum<LangOpts<"GPUDefaultStream">, "Legacy">;
+
+def fgpu_flush_denormals_to_zero : Flag<["-"], "fgpu-flush-denormals-to-zero">,
+  HelpText<"Flush denormal floating point values to zero in CUDA/HIP device mode.">;
+def fno_gpu_flush_denormals_to_zero : Flag<["-"], "fno-gpu-flush-denormals-to-zero">;
+
+defm gpu_defer_diag : BoolFOption<"gpu-defer-diag",
+  LangOpts<"GPUDeferDiag">, DefaultFalse,
+  PosFlag<SetTrue, [CC1Option], "Defer">, NegFlag<SetFalse, [], "Don't defer">,
+  BothFlags<[], " host/device related diagnostic messages for CUDA/HIP">>;
+
+defm gpu_exclude_wrong_side_overloads : BoolFOption<"gpu-exclude-wrong-side-overloads",
+  LangOpts<"GPUExcludeWrongSideOverloads">, DefaultFalse,
+  PosFlag<SetTrue, [CC1Option], "Always exclude wrong side overloads">,
+  NegFlag<SetFalse, [], "Exclude wrong side overloads only if there are same side overloads">,
+  BothFlags<[HelpHidden], " in overloading resolution for CUDA/HIP">>;
+
+def cuid_EQ : Joined<["-"], "cuid=">, Flags<[CC1Option]>,
+  HelpText<"An ID for compilation unit, which should be the same for the same "
+           "compilation unit but different for different compilation units. "
+           "It is used to externalize device-side static variables for single "
+           "source offloading languages CUDA and HIP so that they can be "
+           "accessed by the host code of the same compilation unit.">,
+  MarshallingInfoString<LangOpts<"CUID">>;
+def fuse_cuid_EQ : Joined<["-"], "fuse-cuid=">,
+  HelpText<"Method to generate ID's for compilation units for single source "
+           "offloading languages CUDA and HIP: 'hash' (ID's generated by hashing "
+           "file path and command line options) | 'random' (ID's generated as "
+           "random numbers) | 'none' (disabled). Default is 'hash'. This option "
+           "will be overridden by option '-cuid=[ID]' if it is specified." >;
+
+def fgpu_inline_threshold_EQ : Joined<["-"], "fgpu-inline-threshold=">,
+  Flags<[HelpHidden]>,
+  HelpText<"Inline threshold for device compilation for CUDA/HIP">;
+
+def fgpu_sanitize : Flag<["-"], "fgpu-sanitize">, Group<f_Group>,
+  HelpText<"Enable sanitizer for supported offloading devices">;
+def fno_gpu_sanitize : Flag<["-"], "fno-gpu-sanitize">, Group<f_Group>;
+}
+
+// CUDA options
+let Group = cuda_Group in {
+def cuda_include_ptx_EQ : Joined<["--"], "cuda-include-ptx=">, Flags<[NoXarchOption]>,
+  HelpText<"Include PTX for the following GPU architecture (e.g. sm_35) or 'all'. May be specified more than once.">;
+def no_cuda_include_ptx_EQ : Joined<["--"], "no-cuda-include-ptx=">, Flags<[NoXarchOption]>,
+  HelpText<"Do not include PTX for the following GPU architecture (e.g. sm_35) or 'all'. May be specified more than once.">;
+def cuda_gpu_arch_EQ : Joined<["--"], "cuda-gpu-arch=">, Flags<[NoXarchOption]>,
+  Alias<offload_arch_EQ>;
+def cuda_feature_EQ : Joined<["--"], "cuda-feature=">, HelpText<"Manually specify the CUDA feature to use">;
 def no_cuda_gpu_arch_EQ : Joined<["--"], "no-cuda-gpu-arch=">, Flags<[NoXarchOption]>,
   Alias<no_offload_arch_EQ>;
+
+def cuda_device_only : Flag<["--"], "cuda-device-only">, Alias<offload_device_only>,
+  HelpText<"Compile CUDA code for device only">;
+def cuda_host_only : Flag<["--"], "cuda-host-only">, Alias<offload_host_only>,
+  HelpText<"Compile CUDA code for host only. Has no effect on non-CUDA compilations.">;
+def cuda_compile_host_device : Flag<["--"], "cuda-compile-host-device">, Alias<offload_host_device>,
+  HelpText<"Compile CUDA code for both host and device (default). Has no "
+           "effect on non-CUDA compilations.">;
+
 def cuda_noopt_device_debug : Flag<["--"], "cuda-noopt-device-debug">,
   HelpText<"Enable device-side debug info generation. Disables ptxas optimizations.">;
 def no_cuda_version_check : Flag<["--"], "no-cuda-version-check">,
@@ -1020,23 +1102,21 @@ def cuda_path_ignore_env : Flag<["--"], "cuda-path-ignore-env">, Group<i_Group>,
   HelpText<"Ignore environment variables to detect CUDA installation">;
 def ptxas_path_EQ : Joined<["--"], "ptxas-path=">, Group<i_Group>,
   HelpText<"Path to ptxas (used for compiling CUDA code)">;
-def fgpu_flush_denormals_to_zero : Flag<["-"], "fgpu-flush-denormals-to-zero">,
-  HelpText<"Flush denormal floating point values to zero in CUDA/HIP device mode.">;
-def fno_gpu_flush_denormals_to_zero : Flag<["-"], "fno-gpu-flush-denormals-to-zero">;
 def fcuda_flush_denormals_to_zero : Flag<["-"], "fcuda-flush-denormals-to-zero">,
   Alias<fgpu_flush_denormals_to_zero>;
 def fno_cuda_flush_denormals_to_zero : Flag<["-"], "fno-cuda-flush-denormals-to-zero">,
   Alias<fno_gpu_flush_denormals_to_zero>;
-defm gpu_rdc : BoolFOption<"gpu-rdc",
-  LangOpts<"GPURelocatableDeviceCode">, DefaultFalse,
-  PosFlag<SetTrue, [CC1Option], "Generate relocatable device code, also known as separate compilation mode">,
-  NegFlag<SetFalse>>;
 def : Flag<["-"], "fcuda-rdc">, Alias<fgpu_rdc>;
 def : Flag<["-"], "fno-cuda-rdc">, Alias<fno_gpu_rdc>;
 defm cuda_short_ptr : BoolFOption<"cuda-short-ptr",
   TargetOpts<"NVPTXUseShortPointers">, DefaultFalse,
   PosFlag<SetTrue, [CC1Option], "Use 32-bit pointers for accessing const/local/shared address spaces">,
   NegFlag<SetFalse>>;
+}
+
+def emit_static_lib : Flag<["--"], "emit-static-lib">,
+  HelpText<"Enable linker job to emit a static library.">;
+
 def mprintf_kind_EQ : Joined<["-"], "mprintf-kind=">, Group<m_Group>,
   HelpText<"Specify the printf lowering scheme (AMDGPU only), allowed values are "
   "\"hostcall\"(printing happens during kernel execution, this scheme "
@@ -1048,30 +1128,26 @@ def mprintf_kind_EQ : Joined<["-"], "mprintf-kind=">, Group<m_Group>,
   NormalizedValuesScope<"TargetOptions::AMDGPUPrintfKind">,
   NormalizedValues<["Hostcall", "Buffered"]>,
   MarshallingInfoEnum<TargetOpts<"AMDGPUPrintfKindVal">, "Hostcall">;
-def fgpu_default_stream_EQ : Joined<["-"], "fgpu-default-stream=">,
-  HelpText<"Specify default stream. The default value is 'legacy'. (HIP only)">,
-  Flags<[CC1Option]>,
-  Values<"legacy,per-thread">,
-  NormalizedValuesScope<"LangOptions::GPUDefaultStreamKind">,
-  NormalizedValues<["Legacy", "PerThread"]>,
-  MarshallingInfoEnum<LangOpts<"GPUDefaultStream">, "Legacy">;
-def rocm_path_EQ : Joined<["--"], "rocm-path=">, Group<i_Group>,
+
+// HIP options
+let Group = hip_Group in {
+def hip_link : Flag<["--"], "hip-link">, Group<opencl_Group>,
+  HelpText<"Link clang-offload-bundler bundles for HIP">;
+def no_hip_rt: Flag<["-"], "no-hip-rt">, Group<hip_Group>,
+  HelpText<"Do not link against HIP runtime libraries">;
+def rocm_path_EQ : Joined<["--"], "rocm-path=">, Group<hip_Group>,
   HelpText<"ROCm installation path, used for finding and automatically linking required bitcode libraries.">;
-def hip_path_EQ : Joined<["--"], "hip-path=">, Group<i_Group>,
+def hip_path_EQ : Joined<["--"], "hip-path=">, Group<hip_Group>,
   HelpText<"HIP runtime installation path, used for finding HIP version and adding HIP include path.">;
-def amdgpu_arch_tool_EQ : Joined<["--"], "amdgpu-arch-tool=">, Group<i_Group>,
-  HelpText<"Tool used for detecting AMD GPU arch in the system.">;
-def nvptx_arch_tool_EQ : Joined<["--"], "nvptx-arch-tool=">, Group<i_Group>,
-  HelpText<"Tool used for detecting NVIDIA GPU arch in the system.">;
-def rocm_device_lib_path_EQ : Joined<["--"], "rocm-device-lib-path=">, Group<Link_Group>,
+def rocm_device_lib_path_EQ : Joined<["--"], "rocm-device-lib-path=">, Group<hip_Group>,
   HelpText<"ROCm device library path. Alternative to rocm-path.">;
 def : Joined<["--"], "hip-device-lib-path=">, Alias<rocm_device_lib_path_EQ>;
-def hip_device_lib_EQ : Joined<["--"], "hip-device-lib=">, Group<Link_Group>,
+def hip_device_lib_EQ : Joined<["--"], "hip-device-lib=">, Group<hip_Group>,
   HelpText<"HIP device library">;
-def hip_version_EQ : Joined<["--"], "hip-version=">,
+def hip_version_EQ : Joined<["--"], "hip-version=">, Group<hip_Group>,
   HelpText<"HIP version in the format of major.minor.patch">;
 def fhip_dump_offload_linker_script : Flag<["-"], "fhip-dump-offload-linker-script">,
-  Group<f_Group>, Flags<[NoArgumentUnused, HelpHidden]>;
+  Group<hip_Group>, Flags<[NoArgumentUnused, HelpHidden]>;
 defm hip_new_launch_api : BoolFOption<"hip-new-launch-api",
   LangOpts<"HIPUseNewLaunchAPI">, DefaultFalse,
   PosFlag<SetTrue, [CC1Option], "Use">, NegFlag<SetFalse, [], "Don't use">,
@@ -1097,50 +1173,24 @@ defm gpu_allow_device_init : BoolFOption<"gpu-allow-device-init",
   PosFlag<SetTrue, [CC1Option], "Allow">, NegFlag<SetFalse, [], "Don't allow">,
   BothFlags<[], " device side init function in HIP (experimental)">>,
   ShouldParseIf<hip.KeyPath>;
-defm gpu_defer_diag : BoolFOption<"gpu-defer-diag",
-  LangOpts<"GPUDeferDiag">, DefaultFalse,
-  PosFlag<SetTrue, [CC1Option], "Defer">, NegFlag<SetFalse, [], "Don't defer">,
-  BothFlags<[], " host/device related diagnostic messages for CUDA/HIP">>;
-defm gpu_exclude_wrong_side_overloads : BoolFOption<"gpu-exclude-wrong-side-overloads",
-  LangOpts<"GPUExcludeWrongSideOverloads">, DefaultFalse,
-  PosFlag<SetTrue, [CC1Option], "Always exclude wrong side overloads">,
-  NegFlag<SetFalse, [], "Exclude wrong side overloads only if there are same side overloads">,
-  BothFlags<[HelpHidden], " in overloading resolution for CUDA/HIP">>;
 def gpu_max_threads_per_block_EQ : Joined<["--"], "gpu-max-threads-per-block=">,
   Flags<[CC1Option]>,
   HelpText<"Default max threads per block for kernel launch bounds for HIP">,
   MarshallingInfoInt<LangOpts<"GPUMaxThreadsPerBlock">, "1024">,
   ShouldParseIf<hip.KeyPath>;
-def fgpu_inline_threshold_EQ : Joined<["-"], "fgpu-inline-threshold=">,
-  Flags<[HelpHidden]>,
-  HelpText<"Inline threshold for device compilation for CUDA/HIP">;
 def gpu_instrument_lib_EQ : Joined<["--"], "gpu-instrument-lib=">,
   HelpText<"Instrument device library for HIP, which is a LLVM bitcode containing "
   "__cyg_profile_func_enter and __cyg_profile_func_exit">;
-def fgpu_sanitize : Flag<["-"], "fgpu-sanitize">, Group<f_Group>,
-  HelpText<"Enable sanitizer for AMDGPU target">;
-def fno_gpu_sanitize : Flag<["-"], "fno-gpu-sanitize">, Group<f_Group>;
 def gpu_bundle_output : Flag<["--"], "gpu-bundle-output">,
-  Group<f_Group>, HelpText<"Bundle output files of HIP device compilation">;
+  HelpText<"Bundle output files of HIP device compilation">;
 def no_gpu_bundle_output : Flag<["--"], "no-gpu-bundle-output">,
-  Group<f_Group>, HelpText<"Do not bundle output files of HIP device compilation">;
-def fhip_emit_relocatable : Flag<["-"], "fhip-emit-relocatable">, Group<f_Group>,
+  Group<hip_Group>, HelpText<"Do not bundle output files of HIP device compilation">;
+def fhip_emit_relocatable : Flag<["-"], "fhip-emit-relocatable">,
   HelpText<"Compile HIP source to relocatable">;
-def fno_hip_emit_relocatable : Flag<["-"], "fno-hip-emit-relocatable">, Group<f_Group>,
+def fno_hip_emit_relocatable : Flag<["-"], "fno-hip-emit-relocatable">,
   HelpText<"Do not override toolchain to compile HIP source to relocatable">;
-def cuid_EQ : Joined<["-"], "cuid=">, Flags<[CC1Option]>,
-  HelpText<"An ID for compilation unit, which should be the same for the same "
-           "compilation unit but different for different compilation units. "
-           "It is used to externalize device-side static variables for single "
-           "source offloading languages CUDA and HIP so that they can be "
-           "accessed by the host code of the same compilation unit.">,
-  MarshallingInfoString<LangOpts<"CUID">>;
-def fuse_cuid_EQ : Joined<["-"], "fuse-cuid=">,
-  HelpText<"Method to generate ID's for compilation units for single source "
-           "offloading languages CUDA and HIP: 'hash' (ID's generated by hashing "
-           "file path and command line options) | 'random' (ID's generated as "
-           "random numbers) | 'none' (disabled). Default is 'hash'. This option "
-           "will be overridden by option '-cuid=[ID]' if it is specified." >;
+}
+
 def libomptarget_amdgpu_bc_path_EQ : Joined<["--"], "libomptarget-amdgpu-bc-path=">, Group<i_Group>,
   HelpText<"Path to libomptarget-amdgcn bitcode library">;
 def libomptarget_amdgcn_bc_path_EQ : Joined<["--"], "libomptarget-amdgcn-bc-path=">, Group<i_Group>,
@@ -1253,6 +1303,13 @@ def static_libsan : Flag<["-"], "static-libsan">,
 def : Flag<["-"], "shared-libasan">, Alias<shared_libsan>;
 def fasm : Flag<["-"], "fasm">, Group<f_Group>;
 
+defm assume_unique_vtables : BoolFOption<"assume-unique-vtables",
+  CodeGenOpts<"AssumeUniqueVTables">, DefaultTrue,
+  PosFlag<SetTrue>,
+  NegFlag<SetFalse, [CC1Option],
+          "Disable optimizations based on vtable pointer identity">,
+  BothFlags<[CoreOption]>>;
+
 def fassume_sane_operator_new : Flag<["-"], "fassume-sane-operator-new">, Group<f_Group>;
 def fastcp : Flag<["-"], "fastcp">, Group<f_Group>;
 def fastf : Flag<["-"], "fastf">, Group<f_Group>;
@@ -1260,9 +1317,7 @@ def fast : Flag<["-"], "fast">, Group<f_Group>;
 def fasynchronous_unwind_tables : Flag<["-"], "fasynchronous-unwind-tables">, Group<f_Group>;
 
 defm double_square_bracket_attributes : BoolFOption<"double-square-bracket-attributes",
-  LangOpts<"DoubleSquareBracketAttributes">, Default<!strconcat(cpp11.KeyPath, "||", c2x.KeyPath)>,
-  PosFlag<SetTrue, [], "Enable">, NegFlag<SetFalse, [], "Disable">,
-  BothFlags<[NoXarchOption, CC1Option], " '[[]]' attributes in all C and C++ language modes">>;
+  LangOpts<"DoubleSquareBracketAttributes">, DefaultTrue, PosFlag<SetTrue>, NegFlag<SetFalse>>;
 
 defm autolink : BoolFOption<"autolink",
   CodeGenOpts<"Autolink">, DefaultTrue,
@@ -2820,6 +2875,26 @@ def fno_openmp_target_debug : Flag<["-"], "fno-openmp-target-debug">;
 } // let Group = f_Group
 } // let Flags = [CC1Option, FC1Option, NoArgumentUnused]
 
+//===----------------------------------------------------------------------===//
+// Optimisation remark options
+//===----------------------------------------------------------------------===//
+
+let Flags = [CC1Option, FC1Option, FlangOption] in {
+
+def Rpass_EQ : Joined<["-"], "Rpass=">, Group<R_value_Group>,
+  HelpText<"Report transformations performed by optimization passes whose "
+           "name matches the given POSIX regular expression">;
+def Rpass_missed_EQ : Joined<["-"], "Rpass-missed=">, Group<R_value_Group>,
+  HelpText<"Report missed transformations by optimization passes whose "
+           "name matches the given POSIX regular expression">;
+def Rpass_analysis_EQ : Joined<["-"], "Rpass-analysis=">, Group<R_value_Group>,
+  HelpText<"Report transformation analysis from optimization passes whose "
+           "name matches the given POSIX regular expression">;
+def R_Joined : Joined<["-"], "R">, Group<R_Group>, Flags<[CoreOption]>,
+  MetaVarName<"<remark>">, HelpText<"Enable the specified remark">;
+
+} // let Flags = [CC1Option, FC1Option, FlangOption]
+
 let Flags = [CC1Option, FC1Option, NoArgumentUnused, HelpHidden] in {
 let Group = f_Group in {
 
@@ -2856,23 +2931,6 @@ defm openmp_optimistic_collapse : BoolFOption<"openmp-optimistic-collapse",
   PosFlag<SetTrue, [CC1Option]>, NegFlag<SetFalse>, BothFlags<[NoArgumentUnused, HelpHidden]>>;
 def static_openmp: Flag<["-"], "static-openmp">,
   HelpText<"Use the static host OpenMP runtime while linking.">;
-def offload_new_driver : Flag<["--"], "offload-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
-  MarshallingInfoFlag<LangOpts<"OffloadingNewDriver">>, HelpText<"Use the new driver for offloading compilation.">;
-def no_offload_new_driver : Flag<["--"], "no-offload-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
-  HelpText<"Don't Use the new driver for offloading compilation.">;
-def offload_device_only : Flag<["--"], "offload-device-only">, Flags<[FlangOption]>,
-  HelpText<"Only compile for the offloading device.">;
-def offload_host_only : Flag<["--"], "offload-host-only">, Flags<[FlangOption]>,
-  HelpText<"Only compile for the offloading host.">;
-def offload_host_device : Flag<["--"], "offload-host-device">, Flags<[FlangOption]>,
-  HelpText<"Only compile for the offloading host.">;
-def cuda_device_only : Flag<["--"], "cuda-device-only">, Alias<offload_device_only>,
-  HelpText<"Compile CUDA code for device only">;
-def cuda_host_only : Flag<["--"], "cuda-host-only">, Alias<offload_host_only>,
-  HelpText<"Compile CUDA code for host only. Has no effect on non-CUDA compilations.">;
-def cuda_compile_host_device : Flag<["--"], "cuda-compile-host-device">, Alias<offload_host_device>,
-  HelpText<"Compile CUDA code for both host and device (default). Has no "
-           "effect on non-CUDA compilations.">;
 def fopenmp_new_driver : Flag<["-"], "fopenmp-new-driver">, Flags<[HelpHidden]>,
   HelpText<"Use the new driver for OpenMP offloading.">;
 def fno_openmp_new_driver : Flag<["-"], "fno-openmp-new-driver">, Flags<[HelpHidden]>,
@@ -3074,18 +3132,18 @@ def foperator_arrow_depth_EQ : Joined<["-"], "foperator-arrow-depth=">, Group<f_
   HelpText<"Maximum number of 'operator->'s to call for a member access">,
   MarshallingInfoInt<LangOpts<"ArrowDepth">, "256">;
 
-def fsave_optimization_record : Flag<["-"], "fsave-optimization-record">,
+def fsave_optimization_record : Flag<["-"], "fsave-optimization-record">, Flags<[FlangOption]>,
   Group<f_Group>, HelpText<"Generate a YAML optimization record file">;
-def fsave_optimization_record_EQ : Joined<["-"], "fsave-optimization-record=">,
+def fsave_optimization_record_EQ : Joined<["-"], "fsave-optimization-record=">, Flags<[FlangOption]>,
   Group<f_Group>, HelpText<"Generate an optimization record file in a specific format">,
   MetaVarName<"<format>">;
 def fno_save_optimization_record : Flag<["-"], "fno-save-optimization-record">,
-  Group<f_Group>, Flags<[NoArgumentUnused]>;
-def foptimization_record_file_EQ : Joined<["-"], "foptimization-record-file=">,
+  Group<f_Group>, Flags<[FlangOption, NoArgumentUnused]>;
+def foptimization_record_file_EQ : Joined<["-"], "foptimization-record-file=">, Flags<[FlangOption]>,
   Group<f_Group>,
   HelpText<"Specify the output name of the file containing the optimization remarks. Implies -fsave-optimization-record. On Darwin platforms, this cannot be used with multiple -arch <arch> options.">,
   MetaVarName<"<file>">;
-def foptimization_record_passes_EQ : Joined<["-"], "foptimization-record-passes=">,
+def foptimization_record_passes_EQ : Joined<["-"], "foptimization-record-passes=">, Flags<[FlangOption]>,
   Group<f_Group>,
   HelpText<"Only include passes which match a specified regular expression in the generated optimization record (by default, include all passes)">,
   MetaVarName<"<regex>">;
@@ -3503,8 +3561,9 @@ def gno_embed_source : Flag<["-"], "gno-embed-source">, Group<g_flags_Group>,
     Flags<[NoXarchOption]>,
     HelpText<"Restore the default behavior of not embedding source text in DWARF debug sections">;
 def headerpad__max__install__names : Joined<["-"], "headerpad_max_install_names">;
-def help : Flag<["-", "--"], "help">, Flags<[CC1Option,CC1AsOption, FC1Option,
-    FlangOption]>, HelpText<"Display available options">,
+def help : Flag<["-", "--"], "help">,
+    Flags<[CC1Option, CC1AsOption, FC1Option, FlangOption]>,
+    HelpText<"Display available options">,
     MarshallingInfoFlag<FrontendOpts<"ShowHelp">>;
 def ibuiltininc : Flag<["-"], "ibuiltininc">, Group<clang_i_Group>,
   HelpText<"Enable builtin #include directories even when -nostdinc is used "
@@ -3824,9 +3883,9 @@ def mrvv_vector_bits_EQ : Joined<["-"], "mrvv-vector-bits=">, Group<m_Group>,
            "in __riscv_v_fixed_vlen preprocessor define (RISC-V only)">;
 
 def munaligned_access : Flag<["-"], "munaligned-access">, Group<m_Group>,
-  HelpText<"Allow memory accesses to be unaligned (AArch32/AArch64/LoongArch only)">;
+  HelpText<"Allow memory accesses to be unaligned (AArch32/AArch64/LoongArch/RISC-V only)">;
 def mno_unaligned_access : Flag<["-"], "mno-unaligned-access">, Group<m_Group>,
-  HelpText<"Force all memory accesses to be aligned (AArch32/AArch64/LoongArch only)">;
+  HelpText<"Force all memory accesses to be aligned (AArch32/AArch64/LoongArch/RISC-V only)">;
 } // let Flags = [TargetSpecific]
 def mstrict_align : Flag<["-"], "mstrict-align">, Alias<mno_unaligned_access>, Flags<[CC1Option,HelpHidden]>,
   HelpText<"Force all memory accesses to be aligned (same as mno-unaligned-access)">;
@@ -4401,8 +4460,8 @@ def nostdincxx : Flag<["-"], "nostdinc++">, Flags<[CC1Option]>, Group<IncludePat
 def nostdlib : Flag<["-"], "nostdlib">, Group<Link_Group>;
 def nostdlibxx : Flag<["-"], "nostdlib++">;
 def object : Flag<["-"], "object">;
-def o : JoinedOrSeparate<["-"], "o">, Flags<[NoXarchOption,
-  CC1Option, CC1AsOption, FC1Option, FlangOption]>,
+def o : JoinedOrSeparate<["-"], "o">,
+  Flags<[NoXarchOption, CC1Option, CC1AsOption, FC1Option, FlangOption]>,
   HelpText<"Write output to <file>">, MetaVarName<"<file>">,
   MarshallingInfoString<FrontendOpts<"OutputFile">>;
 def object_file_name_EQ : Joined<["-"], "object-file-name=">, Flags<[CC1Option, CC1AsOption, CoreOption]>,
@@ -4495,6 +4554,9 @@ def no_offload_add_rpath: Flag<["--"], "no-offload-add-rpath">, Flags<[NoArgumen
   Alias<frtlib_add_rpath>;
 def r : Flag<["-"], "r">, Flags<[LinkerInput,NoArgumentUnused]>,
         Group<Link_Group>;
+def regcall4 : Flag<["-"], "regcall4">, Group<m_Group>, Flags<[CC1Option]>,
+  HelpText<"Set __regcall4 as a default calling convention to respect __regcall ABI v.4">,
+  MarshallingInfoFlag<LangOpts<"RegCall4">>;
 def save_temps_EQ : Joined<["-", "--"], "save-temps=">, Flags<[CC1Option, FlangOption, FC1Option, NoXarchOption]>,
   HelpText<"Save intermediate compilation results.">;
 def save_temps : Flag<["-", "--"], "save-temps">, Flags<[FlangOption, FC1Option, NoXarchOption]>,
@@ -4763,7 +4825,6 @@ def _warn__EQ : Joined<["--"], "warn-=">, Alias<W_Joined>;
 def _warn_ : Joined<["--"], "warn-">, Alias<W_Joined>;
 def _write_dependencies : Flag<["--"], "write-dependencies">, Alias<MD>;
 def _write_user_dependencies : Flag<["--"], "write-user-dependencies">, Alias<MMD>;
-def _ : Joined<["--"], "">, Flags<[Unsupported]>;
 
 // Hexagon feature flags.
 let Flags = [TargetSpecific] in {
@@ -4878,6 +4939,7 @@ foreach i = {0-7} in
 } // let Flags = [TargetSpecific]
 
 // X86 feature flags
+let Flags = [TargetSpecific] in {
 def mx87 : Flag<["-"], "mx87">, Group<m_x86_Features_Group>;
 def mno_x87 : Flag<["-"], "mno-x87">, Group<m_x86_Features_Group>;
 def m80387 : Flag<["-"], "m80387">, Alias<mx87>;
@@ -4911,7 +4973,11 @@ def mssse3 : Flag<["-"], "mssse3">, Group<m_x86_Features_Group>;
 def mno_ssse3 : Flag<["-"], "mno-ssse3">, Group<m_x86_Features_Group>;
 def msse4_1 : Flag<["-"], "msse4.1">, Group<m_x86_Features_Group>;
 def mno_sse4_1 : Flag<["-"], "mno-sse4.1">, Group<m_x86_Features_Group>;
+} // let Flags = [TargetSpecific]
+// TODO: Make -msse4.2 TargetSpecific after
+// https://github.com/llvm/llvm-project/issues/63270 is fixed.
 def msse4_2 : Flag<["-"], "msse4.2">, Group<m_x86_Features_Group>;
+let Flags = [TargetSpecific] in {
 def mno_sse4_2 : Flag<["-"], "mno-sse4.2">, Group<m_x86_Features_Group>;
 def msse4 : Flag<["-"], "msse4">, Alias<msse4_2>;
 // -mno-sse4 turns off sse4.1 which has the effect of turning off everything
@@ -5092,6 +5158,7 @@ def mretpoline_external_thunk : Flag<["-"], "mretpoline-external-thunk">, Group<
 def mno_retpoline_external_thunk : Flag<["-"], "mno-retpoline-external-thunk">, Group<m_x86_Features_Group>;
 def mvzeroupper : Flag<["-"], "mvzeroupper">, Group<m_x86_Features_Group>;
 def mno_vzeroupper : Flag<["-"], "mno-vzeroupper">, Group<m_x86_Features_Group>;
+} // let Flags = [TargetSpecific]
 
 // These are legacy user-facing driver-level option spellings. They are always
 // aliases for options that are spelled using the more common Unix / GNU flag
@@ -5397,6 +5464,9 @@ defm xor_operator : OptInFC1FFlag<"xor-operator", "Enable .XOR. as a synonym of 
 defm logical_abbreviations : OptInFC1FFlag<"logical-abbreviations", "Enable logical abbreviations">;
 defm implicit_none : OptInFC1FFlag<"implicit-none", "No implicit typing allowed unless overridden by IMPLICIT statements">;
 defm underscoring : OptInFC1FFlag<"underscoring", "Appends one trailing underscore to external names">;
+defm ppc_native_vec_elem_order: BoolOptionWithoutMarshalling<"f", "ppc-native-vector-element-order",
+  PosFlag<SetTrue, [], "Specifies PowerPC native vector element order (default)">,
+  NegFlag<SetFalse, [], "Specifies PowerPC non-native vector element order">>;
 
 def fno_automatic : Flag<["-"], "fno-automatic">, Group<f_Group>,
   HelpText<"Implies the SAVE attribute for non-automatic local objects in subprograms unless RECURSIVE">;
@@ -5523,7 +5593,7 @@ def triple : Separate<["-"], "triple">,
   MarshallingInfoString<TargetOpts<"Triple">, "llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple())">,
   AlwaysEmit, Normalizer<"normalizeTriple">;
 
-} // let Flags = [CC1Option, CC1ASOption, FC1Option, NoDriverOption]
+} // let Flags = [CC1Option, CC1AsOption, FC1Option, NoDriverOption]
 
 //===----------------------------------------------------------------------===//
 // Target Options (other)
@@ -6380,14 +6450,6 @@ def arcmt_action_EQ : Joined<["-"], "arcmt-action=">, Flags<[CC1Option, NoDriver
   NormalizedValues<["ARCMT_Check", "ARCMT_Modify", "ARCMT_Migrate"]>,
   MarshallingInfoEnum<FrontendOpts<"ARCMTAction">, "ARCMT_None">;
 
-def opt_record_file : Separate<["-"], "opt-record-file">,
-  HelpText<"File name to use for YAML optimization record output">,
-  MarshallingInfoString<CodeGenOpts<"OptRecordFile">>;
-def opt_record_passes : Separate<["-"], "opt-record-passes">,
-  HelpText<"Only record remark information for passes whose names match the given regular expression">;
-def opt_record_format : Separate<["-"], "opt-record-format">,
-  HelpText<"The format used for serializing remarks (default: YAML)">;
-
 def print_stats : Flag<["-"], "print-stats">,
   HelpText<"Print performance metrics and statistics">,
   MarshallingInfoFlag<FrontendOpts<"ShowStats">>;
@@ -6796,11 +6858,12 @@ def sycl_std_EQ : Joined<["-"], "sycl-std=">, Group<sycl_Group>,
   MarshallingInfoEnum<LangOpts<"SYCLVersion">, "SYCL_None">,
   ShouldParseIf<!strconcat(fsycl_is_device.KeyPath, "||", fsycl_is_host.KeyPath)>;
 
-defm cuda_approx_transcendentals : BoolFOption<"cuda-approx-transcendentals",
-  LangOpts<"CUDADeviceApproxTranscendentals">, DefaultFalse,
+defm gpu_approx_transcendentals : BoolFOption<"gpu-approx-transcendentals",
+  LangOpts<"GPUDeviceApproxTranscendentals">, DefaultFalse,
   PosFlag<SetTrue, [CC1Option], "Use">, NegFlag<SetFalse, [], "Don't use">,
-  BothFlags<[], " approximate transcendental functions">>,
-  ShouldParseIf<fcuda_is_device.KeyPath>;
+  BothFlags<[], " approximate transcendental functions">>;
+def : Flag<["-"], "fcuda-approx-transcendentals">, Alias<fgpu_approx_transcendentals>;
+def : Flag<["-"], "fno-cuda-approx-transcendentals">, Alias<fno_gpu_approx_transcendentals>;
 
 //===----------------------------------------------------------------------===//
 // Frontend Options - cc1 + fc1
@@ -6826,6 +6889,14 @@ defm debug_pass_manager : BoolOption<"f", "debug-pass-manager",
   CodeGenOpts<"DebugPassManager">, DefaultFalse,
   PosFlag<SetTrue, [], "Prints debug information for the new pass manager">,
   NegFlag<SetFalse, [], "Disables debug printing for the new pass manager">>;
+
+def opt_record_file : Separate<["-"], "opt-record-file">,
+  HelpText<"File name to use for YAML optimization record output">,
+  MarshallingInfoString<CodeGenOpts<"OptRecordFile">>;
+def opt_record_passes : Separate<["-"], "opt-record-passes">,
+  HelpText<"Only record remark information for passes whose names match the given regular expression">;
+def opt_record_format : Separate<["-"], "opt-record-format">,
+  HelpText<"The format used for serializing remarks (default: YAML)">;
 
 } // let Flags = [CC1Option, FC1Option, NoDriverOption]
 
@@ -6858,13 +6929,13 @@ def dwarf_debug_producer : Separate<["-"], "dwarf-debug-producer">,
 def defsym : Separate<["-"], "defsym">,
   HelpText<"Define a value for a symbol">;
 
-} // let Flags = [CC1AsOption]
+} // let Flags = [CC1AsOption, NoDriverOption]
 
 //===----------------------------------------------------------------------===//
 // clang-cl Options
 //===----------------------------------------------------------------------===//
 
-def cl_Group : OptionGroup<"<clang-cl options>">, Flags<[CLDXCOption]>,
+def cl_Group : OptionGroup<"<clang-cl options>">,
   HelpText<"CL.EXE COMPATIBILITY OPTIONS">;
 
 def cl_compile_Group : OptionGroup<"<clang-cl compile-only options>">,
@@ -7282,6 +7353,8 @@ def _SLASH_Gv : CLFlag<"Gv">,
   HelpText<"Set __vectorcall as a default calling convention">;
 def _SLASH_Gregcall : CLFlag<"Gregcall">,
   HelpText<"Set __regcall as a default calling convention">;
+def _SLASH_Gregcall4 : CLFlag<"Gregcall4">,
+  HelpText<"Set __regcall4 as a default calling convention to respect __regcall ABI v.4">;
 
 // GNU Driver aliases
 
