@@ -79,9 +79,7 @@ static MCInstPrinter *createLoongArchMCInstPrinter(const Triple &T,
                                                    const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::LoongArch_Generic)
     return new LoongArchInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

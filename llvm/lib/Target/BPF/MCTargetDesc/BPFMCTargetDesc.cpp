@@ -66,9 +66,7 @@ static MCInstPrinter *createBPFMCInstPrinter(const Triple &T,
                                              const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::BPF_Generic)
     return new BPFInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

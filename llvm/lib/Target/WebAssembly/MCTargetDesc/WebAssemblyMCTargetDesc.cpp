@@ -80,9 +80,7 @@ static MCInstPrinter *createMCInstPrinter(const Triple & /*T*/,
                                           const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::WebAssembly_Generic)
     return new WebAssemblyInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

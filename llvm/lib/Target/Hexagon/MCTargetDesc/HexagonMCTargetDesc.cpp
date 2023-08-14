@@ -335,9 +335,7 @@ static MCInstPrinter *createHexagonMCInstPrinter(const Triple &T,
 {
   if (Variant == AsmDialect::Hexagon_Generic)
     return new HexagonInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

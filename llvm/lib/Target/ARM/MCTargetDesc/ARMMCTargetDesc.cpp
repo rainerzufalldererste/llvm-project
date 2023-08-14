@@ -383,9 +383,7 @@ static MCInstPrinter *createARMMCInstPrinter(const Triple &T,
                                              const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::ARM_Generic)
     return new ARMInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

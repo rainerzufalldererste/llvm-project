@@ -77,9 +77,7 @@ static MCInstPrinter *createMSP430MCInstPrinter(const Triple &T,
                                                 const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::MSP430_Generic)
     return new MSP430InstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

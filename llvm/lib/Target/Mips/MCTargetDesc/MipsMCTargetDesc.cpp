@@ -100,9 +100,7 @@ static MCInstPrinter *createMipsMCInstPrinter(const Triple &T,
                                               const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::Mips_Generic)
     return new MipsInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

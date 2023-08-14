@@ -79,9 +79,7 @@ static MCInstPrinter *createLanaiMCInstPrinter(const Triple & /*T*/,
                                                const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::Lanai_Generic)
     return new LanaiInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

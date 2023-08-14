@@ -64,9 +64,7 @@ static MCInstPrinter *createAVRMCInstPrinter(const Triple &T,
                                              const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::AVR_Generic)
     return new AVRInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

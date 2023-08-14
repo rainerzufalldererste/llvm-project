@@ -372,9 +372,7 @@ static MCInstPrinter *createPPCMCInstPrinter(const Triple &T,
                                              const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::PPC_XCOFF || Variant == AsmDialect::PPC_ELF)
     return new PPCInstPrinter(MAI, MII, MRI, T);
-  
   assert(false && "Unknown or unsupported syntax variant.");
-  
   return nullptr;
 }
 

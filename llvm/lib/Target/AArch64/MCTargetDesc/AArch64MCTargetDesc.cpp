@@ -371,9 +371,7 @@ static MCInstPrinter *createAArch64MCInstPrinter(const Triple &T,
     return new AArch64InstPrinter(MAI, MII, MRI);
   else if (Variant == AsmDialect::AArch64_Apple)
     return new AArch64AppleInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

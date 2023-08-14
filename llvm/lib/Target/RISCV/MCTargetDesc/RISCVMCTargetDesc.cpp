@@ -91,9 +91,7 @@ static MCInstPrinter *createRISCVMCInstPrinter(const Triple &T,
                                                const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::RISCV_Generic)
     return new RISCVInstPrinter(MAI, MII, MRI);
-  
   assert(false && "Unknown or unsupported syntax variant.");
-  
   return nullptr;
 }
 

@@ -74,9 +74,7 @@ static MCInstPrinter *createXCoreMCInstPrinter(const Triple &T,
                                                const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::XCore_Generic)
     return new XCoreInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

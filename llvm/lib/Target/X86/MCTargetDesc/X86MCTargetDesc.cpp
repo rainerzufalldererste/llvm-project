@@ -476,9 +476,7 @@ static MCInstPrinter *createX86MCInstPrinter(const Triple &T,
     return new X86ATTInstPrinter(MAI, MII, MRI);
   else if (Variant == AsmDialect::X86_Intel)
     return new X86IntelInstPrinter(MAI, MII, MRI);
-  
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

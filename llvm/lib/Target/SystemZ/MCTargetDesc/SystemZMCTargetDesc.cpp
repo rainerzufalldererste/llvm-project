@@ -189,9 +189,7 @@ static MCInstPrinter *createSystemZMCInstPrinter(const Triple &T,
   if (Variant == AsmDialect::SystemZ_ATT || 
     Variant == AsmDialect::SystemZ_HLASM)
     return new SystemZInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

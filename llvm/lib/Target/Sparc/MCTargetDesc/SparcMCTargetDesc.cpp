@@ -95,9 +95,7 @@ static MCInstPrinter *createSparcMCInstPrinter(const Triple &T,
                                                const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::Sparc_Generic)
     return new SparcInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 

@@ -57,9 +57,7 @@ static MCInstPrinter *createNVPTXMCInstPrinter(const Triple &T,
                                                const MCRegisterInfo &MRI) {
   if (Variant == AsmDialect::NVPTX_Generic)
     return new NVPTXInstPrinter(MAI, MII, MRI);
-
   assert(false && "Unknown or unsupported syntax variant.");
-
   return nullptr;
 }
 
